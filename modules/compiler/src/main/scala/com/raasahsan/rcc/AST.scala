@@ -1,16 +1,25 @@
 package com.raasahsan.rcc
 
+import cats.data.NonEmptyList
+
 object AST {
   // The unit of program text after preprocessing is called a translation unit,
   // which consists of a sequence of external declarations.
-  final case class TranslationUnit(externalDeclarations: List[ExternalDeclaration])
+  final case class TranslationUnit(externalDeclarations: NonEmptyList[ExternalDeclaration])
 
   enum ExternalDeclaration {
-    case FunctionDefinition()
-    case Declaration()
+    case FunctionDefinition(value: AST.FunctionDefinition)
+    case Declaration(value: AST.Declaration)
   }
 
-  final case class DeclarationList(declarations: List[Declaration])
+  final case class FunctionDefinition(
+    specifiers: Option[DeclarationSpecifiers], 
+    declarator: Declarator, 
+    declarationList: Option[DeclarationList], 
+    statements: CompoundStatement
+  )
+
+  final case class DeclarationList(declarations: NonEmptyList[Declaration])
 
   final case class StatementList(statements: List[Statement])
 
@@ -37,12 +46,12 @@ object AST {
 
   final case class Declaration(specifiers: DeclarationSpecifiers, initDeclaratorList: Option[InitDeclaratorList])
 
-  final case class DeclarationSpecifiers(specifiers: List[DeclarationSpecifier])
+  final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
 
   enum DeclarationSpecifier {
-    case StorageClass(value: StorageClassSpecifier)
-    case Type(value: TypeSpecifier)
-    case TypeQual(value: TypeQualifier)
+    case StorageClassSpecifier(value: AST.StorageClassSpecifier)
+    case TypeSpecifier(value: AST.TypeSpecifier)
+    case TypeQualifier(value: AST.TypeQualifier)
   }
 
   enum StorageClassSpecifier {

@@ -1,11 +1,12 @@
 
-lazy val root = project.in(file("."))
+lazy val root = project
+  .in(file("."))
   .aggregate(compiler)
 
 lazy val compiler = project
   .in(file("modules/compiler"))
   .settings(
-    libraryDependencies ++= SeQ(
+    libraryDependencies ++= Seq(
       Dependencies.catsParse
     )
   )
