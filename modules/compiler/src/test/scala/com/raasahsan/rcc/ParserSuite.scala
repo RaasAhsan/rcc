@@ -13,4 +13,13 @@ class ParserSuite extends FunSuite {
     assert(Parser.parse(program).isRight)
   }
 
+  test("parse assignment") {
+    val program = """
+      int main() {
+        int b = 4;
+        return b;
+      }
+    """
+  }
+
 }

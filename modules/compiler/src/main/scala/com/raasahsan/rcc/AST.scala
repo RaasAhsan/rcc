@@ -126,7 +126,9 @@ object AST {
   final case class AssignmentExpression(constant: Constant)
 
   enum Expression {
-    case Constant(value: AST.Constant)
+    case Constant(constant: AST.Constant)
+    case Identifier(identifier: AST.Identifier)
+    case Assignment(lhs: Expression, rhs: Expression)
   }
 
   enum AssignmentOperator {

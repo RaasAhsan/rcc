@@ -147,10 +147,12 @@ object Parser {
     assignmentExpression
 
   def assignmentExpression: P[Expression] =
-    primaryExpression
+    (primaryExpression ~ (assignOp *> primaryExpression)).map((l, r) => Expression.Assignment(l, r)).backtrack |
+    primaryExpression 
 
   def primaryExpression: P[Expression] =
-    constant.map(Expression.Constant(_))
+    constant.map(Expression.Constant(_)) |
+      identifier.map(Expression.Identifier(_))
 
   def assignmentOperator: P[AssignmentOperator] =
     operator("=").as(AssignmentOperator.Assign) |
