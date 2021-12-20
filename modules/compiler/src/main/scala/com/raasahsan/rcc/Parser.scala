@@ -134,7 +134,7 @@ object Parser {
       expressionStatement.map(Statement.Expression(_))
   ).withContext("statement")
 
-  def expressionStatement: P[ExpressionStatement] = 
+  def expressionStatement: P[ExpressionStatement] =
     (expression.?.with1 <* semicolon).map(ExpressionStatement(_))
 
   def jumpStatement: P[JumpStatement] =
@@ -173,14 +173,15 @@ object Parser {
 
     import Op._
 
-    (multiplicativeExpression ~ ((plus.as(Plus) | minus.as(Minus)) ~ multiplicativeExpression).rep0).map { (h, t) =>
-      t.foldLeft(h) { case (acc, (op, expr)) =>
-        op match {
-          case Plus => Expression.Plus(acc, expr)
-          case Minus => Expression.Minus(acc, expr)
+    (multiplicativeExpression ~ ((plus.as(Plus) | minus.as(Minus)) ~ multiplicativeExpression).rep0)
+      .map { (h, t) =>
+        t.foldLeft(h) { case (acc, (op, expr)) =>
+          op match {
+            case Plus  => Expression.Plus(acc, expr)
+            case Minus => Expression.Minus(acc, expr)
+          }
         }
       }
-    }
   }
 
   def multiplicativeExpression: P[Expression] = {
@@ -192,10 +193,12 @@ object Parser {
 
     import Op._
 
-    (primaryExpression ~ ((star.as(Star) | divide.as(Divide) | modulo.as(Modulo)) ~ primaryExpression).rep0).map { (h, t) =>
+    (primaryExpression ~ ((star.as(Star) | divide.as(Divide) | modulo.as(
+      Modulo
+    )) ~ primaryExpression).rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, (op, expr)) =>
         op match {
-          case Star => Expression.Times(acc, expr)
+          case Star   => Expression.Times(acc, expr)
           case Divide => Expression.Divide(acc, expr)
           case Modulo => Expression.Modulo(acc, expr)
         }
