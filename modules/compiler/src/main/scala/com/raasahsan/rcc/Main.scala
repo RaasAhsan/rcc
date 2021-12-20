@@ -5,7 +5,7 @@ object Main {
   val program = """
   
       int main() {
-        int a = 3 * 5;
+        int a = 35;int b = 35;
         return b;
       }
   
@@ -13,7 +13,8 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val result = Parser.parse(program)
+    println(program.substring(42))
     println(result)
-    println(result.left.map(_.expected.map(_.context)))
+    // println(result.left.map(_.expected.map(_.context)))
   }
 }

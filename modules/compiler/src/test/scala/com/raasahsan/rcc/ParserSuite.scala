@@ -41,4 +41,15 @@ class ParserSuite extends FunSuite {
     assert(Parser.parse(program).isRight)
   }
 
+  test("compound") {
+    val program = """
+      int main() {
+        int a = 3;
+        int b = 5;
+        return a + b;
+      }
+    """
+    assert(Parser.parse(program).isRight)
+  }
+
 }

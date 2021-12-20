@@ -29,10 +29,13 @@ object Parser {
       .withContext("functionDefinition")
 
   def declarationList: P[DeclarationList] =
-    declaration.rep.map(DeclarationList(_))
+    declaration.rep.map(DeclarationList(_)).map { x =>
+      println(x)
+      x
+    }
 
   def declaration: P[Declaration] =
-    (declarationSpecifiers ~ initDeclaratorList.?).map { (specifiers, inits) =>
+    (declarationSpecifiers ~ initDeclaratorList.? <* semicolon).map { (specifiers, inits) =>
       Declaration(specifiers, inits)
     }
 
@@ -129,22 +132,23 @@ object Parser {
     statement.rep.map(StatementList(_))
 
   def statement: P[Statement] = (
-    jumpStatement.map(Statement.Jump(_)) |
-      compoundStatement.map(Statement.Compound(_)) |
-      expressionStatement.map(Statement.Expression(_))
+    jumpStatement.map(Statement.Jump(_)).backtrack |
+      expressionStatement.map(Statement.Expression(_)).backtrack |
+      compoundStatement.map(Statement.Compound(_))
   ).withContext("statement")
 
   def expressionStatement: P[ExpressionStatement] =
-    (expression.?.with1 <* semicolon).map(ExpressionStatement(_))
+    (expression.?.with1 <* semicolon).map(ExpressionStatement(_)).withContext("expressionStatement")
 
   def jumpStatement: P[JumpStatement] =
     (returnKeyword *> expression.? <* semicolon).map(expr => JumpStatement.Return(expr))
 
   def compoundStatement: P[CompoundStatement] =
-    (leftBrace *> P.defer0(declarationList.? ~ statementList.? <* rightBrace)).map {
-      (declarations, statements) =>
+    (leftBrace *> P.defer0(declarationList.? ~ statementList.? <* rightBrace))
+      .map { (declarations, statements) =>
         CompoundStatement(declarations, statements)
-    }
+      }
+      .withContext("compoundStatement")
 
   def withParentheses[A](p: P[A]): P[A] =
     leftParentheses *> p <* rightParentheses
@@ -158,12 +162,13 @@ object Parser {
 
   def expression: P[Expression] =
     assignmentExpression
+      .withContext("expression")
 
   def assignmentExpression: P[Expression] =
-    P.recursive { rec =>
+    P.recursive[Expression] { rec =>
       additiveExpression |
         (primaryExpression ~ (assignOp *> rec)).map((l, r) => Expression.Assignment(l, r))
-    }
+    }.withContext("assignmentExpression")
 
   def additiveExpression: P[Expression] = {
     enum Op {
@@ -246,10 +251,13 @@ object Parser {
   def operator(t: String): P[Unit] =
     P.string(t) <* maybeWhitespace
 
+  val keywords = List("int", "return")
+
   def identifier: P[Identifier] =
-    (nondigit ~ (digit | nondigit).rep0).map { case (c, cs) =>
-      Identifier((c :: cs).mkString)
-    } <* maybeWhitespace
+    (nondigit ~ (digit | nondigit).rep0 <* maybeWhitespace)
+      .map((c, cs) => (c :: cs).mkString)
+      // .filterNot(keywords.contains(_))
+      .map(Identifier(_))
 
   def digit: P[Char] = P.charIn(('0' to '9').toList)
 
