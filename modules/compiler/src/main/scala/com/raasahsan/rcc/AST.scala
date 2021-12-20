@@ -88,9 +88,21 @@ object AST {
 
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator)
 
+  final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
+
+  final case class ParameterList(parameters: NonEmptyList[ParameterDeclaration])
+
+  // TODO: abstract declarator
+  enum ParameterDeclaration {
+    case Declarator(specifiers: DeclarationSpecifiers, declarator: AST.Declarator)
+  }
+
   final case class Pointer()
 
-  final case class DirectDeclarator(identifier: Identifier)
+  enum DirectDeclarator {
+    case Identifier(value: AST.Identifier)
+    case Declarator(value: AST.Declarator)
+  }
 
   final case class Identifier(value: String)
 

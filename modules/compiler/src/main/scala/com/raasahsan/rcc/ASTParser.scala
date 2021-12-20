@@ -57,7 +57,17 @@ object ASTParser {
     Parser.string("const").as(TypeQualifier.Const) |
       Parser.string("static").as(TypeQualifier.Static)
 
-  def declarator: Parser[Declarator] = ???
+  def declarator: Parser[Declarator] =
+    (pointer.?.with1 ~ directDeclarator).map { case (pointer, decl) => Declarator(pointer, decl) }
+
+  def directDeclarator: Parser[DirectDeclarator] = 
+    identifier.map(DirectDeclarator.Identifier(_)) |
+      (Parser.string("(") *> declarator <* Parser.string(")")).map(DirectDeclarator.Declarator(_))
+
+
+  def identifier: Parser[Identifier] = ???
+
+  def pointer: Parser[Pointer] = ???
 
   def compoundStatement: Parser[CompoundStatement] = ???
 
