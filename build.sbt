@@ -6,6 +6,7 @@ lazy val root = project
 lazy val compiler = project
   .in(file("modules/compiler"))
   .settings(
+    fork in run := true,
     libraryDependencies ++= Seq(
       Dependencies.catsParse
     )

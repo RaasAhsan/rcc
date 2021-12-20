@@ -21,15 +21,15 @@ object AST {
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
 
-  final case class StatementList(statements: List[Statement])
+  final case class StatementList(statements: NonEmptyList[Statement])
 
   enum Statement {
-    case Labeled(value: LabeledStatement)
-    case Compound(value: CompoundStatement)
+    case Labeled(stmt: LabeledStatement)
+    case Compound(stmt: CompoundStatement)
     case Expression()
     case Selection()
     case Iteration()
-    case Jump()
+    case Jump(stmt: JumpStatement)
   }
 
   final case class LabeledStatement()
@@ -77,12 +77,14 @@ object AST {
     case TypedefName()
   }
 
+  final case class TypeQualifierList(qualifiers: NonEmptyList[TypeQualifier])
+
   enum TypeQualifier {
     case Const
     case Static
   }
 
-  final case class InitDeclaratorList(declarators: List[InitDeclarator])
+  final case class InitDeclaratorList(declarators: NonEmptyList[InitDeclarator])
 
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
 
@@ -92,30 +94,57 @@ object AST {
 
   final case class ParameterList(parameters: NonEmptyList[ParameterDeclaration])
 
+  final case class IdentifierList(identifiers: NonEmptyList[Identifier])
+
   // TODO: abstract declarator
   enum ParameterDeclaration {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: AST.Declarator)
   }
 
-  final case class Pointer()
+  final case class Pointer(typeQualifiers: Option[TypeQualifierList], pointer: Option[Pointer])
 
   enum DirectDeclarator {
     case Identifier(value: AST.Identifier)
     case Declarator(value: AST.Declarator)
+    case FunctionDeclarator(decl: DirectDeclarator, parameterTypeList: ParameterTypeList)
+    case Identifiers(decl: DirectDeclarator, identifiers: Option[IdentifierList])
   }
 
   final case class Identifier(value: String)
 
   enum Initializer {
-    case Assignment(expression: AssignmentExpression)
+    case Expression(expression: AST.Expression)
     case Initializers(initializers: InitializerList)
   }
 
-  final case class InitializerList(initializers: List[Initializer])
+  final case class InitializerList(initializers: NonEmptyList[Initializer])
+
+  // enum Expression {
+  //   case Assignment(value: AssignmentExpression)
+  // }
+
+  final case class AssignmentExpression(constant: Constant)
 
   enum Expression {
-    case Assignment(value: AssignmentExpression)
+    case Constant(value: AST.Constant)
   }
 
-  final case class AssignmentExpression()
+  enum AssignmentOperator {
+    case Assign
+    case StarAssign
+    case DivAssign
+    case ModAssign
+    case PlusAssign
+    case MinusAssign
+    case ShlAssign
+    case ShrAssign
+    case AndAssign
+    case XorAssign
+    case OrAssign
+  }
+
+  enum Constant {
+    case IntegerConstant(value: Int)
+  }
+
 }

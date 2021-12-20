@@ -11,6 +11,7 @@ object Main {
   """
   
   def main(args: Array[String]): Unit = {
-    println("Hello world!")
+    println(Parser.parse(program))
+    println(Parser.parse(program).left.map(_.expected.map(_.context)))
   }
 }
