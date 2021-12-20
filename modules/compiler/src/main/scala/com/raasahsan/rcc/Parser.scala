@@ -130,8 +130,12 @@ object Parser {
 
   def statement: P[Statement] = (
     jumpStatement.map(Statement.Jump(_)) |
-      compoundStatement.map(Statement.Compound(_))
+      compoundStatement.map(Statement.Compound(_)) |
+      expressionStatement.map(Statement.Expression(_))
   ).withContext("statement")
+
+  def expressionStatement: P[ExpressionStatement] = 
+    (expression.?.with1 <* semicolon).map(ExpressionStatement(_))
 
   def jumpStatement: P[JumpStatement] =
     (returnKeyword *> expression.? <* semicolon).map(expr => JumpStatement.Return(expr))
@@ -148,20 +152,61 @@ object Parser {
   def withParentheses0[A](p: P0[A]): P[A] =
     leftParentheses *> p <* rightParentheses
 
-  // Expressions
+  /////////////////
+  // Expressions //
+  /////////////////
 
   def expression: P[Expression] =
     assignmentExpression
 
   def assignmentExpression: P[Expression] =
-    (primaryExpression ~ (assignOp *> primaryExpression))
-      .map((l, r) => Expression.Assignment(l, r))
-      .backtrack |
-      primaryExpression
+    P.recursive { rec =>
+      additiveExpression |
+        (primaryExpression ~ (assignOp *> rec)).map((l, r) => Expression.Assignment(l, r))
+    }
+
+  def additiveExpression: P[Expression] = {
+    enum Op {
+      case Plus
+      case Minus
+    }
+
+    import Op._
+
+    (multiplicativeExpression ~ ((plus.as(Plus) | minus.as(Minus)) ~ multiplicativeExpression).rep0).map { (h, t) =>
+      t.foldLeft(h) { case (acc, (op, expr)) =>
+        op match {
+          case Plus => Expression.Plus(acc, expr)
+          case Minus => Expression.Minus(acc, expr)
+        }
+      }
+    }
+  }
+
+  def multiplicativeExpression: P[Expression] = {
+    enum Op {
+      case Star
+      case Divide
+      case Modulo
+    }
+
+    import Op._
+
+    (primaryExpression ~ ((star.as(Star) | divide.as(Divide) | modulo.as(Modulo)) ~ primaryExpression).rep0).map { (h, t) =>
+      t.foldLeft(h) { case (acc, (op, expr)) =>
+        op match {
+          case Star => Expression.Times(acc, expr)
+          case Divide => Expression.Divide(acc, expr)
+          case Modulo => Expression.Modulo(acc, expr)
+        }
+      }
+    }
+  }
 
   def primaryExpression: P[Expression] =
     constant.map(Expression.Constant(_)) |
-      identifier.map(Expression.Identifier(_))
+      identifier.map(Expression.Identifier(_)) |
+      withParentheses(P.defer(expression))
 
   def assignmentOperator: P[AssignmentOperator] =
     operator("=").as(AssignmentOperator.Assign) |
@@ -181,7 +226,7 @@ object Parser {
   // higher-level parsers must reference these
 
   def constant: P[Constant] =
-    integerConstant.map(Constant.IntegerConstant(_))
+    integerConstant.map(Constant.IntegerConstant(_)) <* maybeWhitespace
 
   // TODO: refine with other types of constants
   def integerConstant: P[Int] =
@@ -226,14 +271,14 @@ object Parser {
   def maybeWhitespace: P0[Unit] =
     whitespace.?.void
 
-  def assignOp: P[Unit] =
-    operator("=")
-
-  def semicolon: P[Unit] =
-    operator(";")
-
-  def comma: P[Unit] =
-    operator(",")
+  def assignOp: P[Unit] = operator("=")
+  def semicolon: P[Unit] = operator(";")
+  def comma: P[Unit] = operator(",")
+  def plus: P[Unit] = operator("+")
+  def minus: P[Unit] = operator("-")
+  def star: P[Unit] = operator("*")
+  def divide: P[Unit] = operator("/")
+  def modulo: P[Unit] = operator("%")
 
   def returnKeyword: P[Unit] =
     keyword("return")

@@ -26,11 +26,13 @@ object AST {
   enum Statement {
     case Labeled(stmt: LabeledStatement)
     case Compound(stmt: CompoundStatement)
-    case Expression()
+    case Expression(stmt: ExpressionStatement)
     case Selection()
     case Iteration()
     case Jump(stmt: JumpStatement)
   }
+
+  final case class ExpressionStatement(expr: Option[Expression])
 
   final case class LabeledStatement()
 
@@ -135,6 +137,11 @@ object AST {
     case Constant(constant: AST.Constant)
     case Identifier(identifier: AST.Identifier)
     case Assignment(lhs: Expression, rhs: Expression)
+    case Plus(lhs: Expression, rhs: Expression)
+    case Minus(lhs: Expression, rhs: Expression)
+    case Times(lhs: Expression, rhs: Expression)
+    case Divide(lhs: Expression, rhs: Expression)
+    case Modulo(lhs: Expression, rhs: Expression)
   }
 
   enum AssignmentOperator {
