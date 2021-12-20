@@ -13,10 +13,10 @@ object AST {
   }
 
   final case class FunctionDefinition(
-    specifiers: Option[DeclarationSpecifiers], 
-    declarator: Declarator, 
-    declarationList: Option[DeclarationList], 
-    statements: CompoundStatement
+      specifiers: Option[DeclarationSpecifiers],
+      declarator: Declarator,
+      declarationList: Option[DeclarationList],
+      statements: CompoundStatement
   )
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
@@ -34,7 +34,10 @@ object AST {
 
   final case class LabeledStatement()
 
-  final case class CompoundStatement(declarationList: Option[DeclarationList], statementList: Option[StatementList])
+  final case class CompoundStatement(
+      declarationList: Option[DeclarationList],
+      statementList: Option[StatementList]
+  )
 
   // Unconditional jump to another location in the program
   enum JumpStatement {
@@ -44,7 +47,10 @@ object AST {
     case Return(expression: Option[Expression])
   }
 
-  final case class Declaration(specifiers: DeclarationSpecifiers, initDeclaratorList: Option[InitDeclaratorList])
+  final case class Declaration(
+      specifiers: DeclarationSpecifiers,
+      initDeclaratorList: Option[InitDeclaratorList]
+  )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
 

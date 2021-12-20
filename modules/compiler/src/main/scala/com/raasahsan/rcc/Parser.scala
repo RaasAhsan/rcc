@@ -6,12 +6,14 @@ import cats.parse.{Parser => P, Parser0 => P0}
 object Parser {
 
   import AST._
-  
+
   def parse(input: String) =
     translationUnit.parseAll(input)
-  
-  def translationUnit: P[TranslationUnit] = 
-    maybeWhitespace.with1 *> externalDeclaration.rep.map(TranslationUnit(_)).withContext("translationUnit")
+
+  def translationUnit: P[TranslationUnit] =
+    maybeWhitespace.with1 *> externalDeclaration.rep
+      .map(TranslationUnit(_))
+      .withContext("translationUnit")
 
   def externalDeclaration: P[ExternalDeclaration] = (
     functionDefinition.map(ExternalDeclaration.FunctionDefinition(_)) |
@@ -20,16 +22,18 @@ object Parser {
 
   // TODO: can't compose P.With1 with Parser1
   def functionDefinition: P[FunctionDefinition] =
-    (declarationSpecifiers.?.with1 ~ declarator ~ declarationList.? ~ compoundStatement).map {
-      case (((specifiers, declarator), declarations), statements) => FunctionDefinition(specifiers, declarator, declarations, statements)
-    }.withContext("functionDefinition")
+    (declarationSpecifiers.?.with1 ~ declarator ~ declarationList.? ~ compoundStatement)
+      .map { case (((specifiers, declarator), declarations), statements) =>
+        FunctionDefinition(specifiers, declarator, declarations, statements)
+      }
+      .withContext("functionDefinition")
 
   def declarationList: P[DeclarationList] =
     declaration.rep.map(DeclarationList(_))
 
-  def declaration: P[Declaration] = 
+  def declaration: P[Declaration] =
     (declarationSpecifiers ~ initDeclaratorList.?).map { (specifiers, inits) =>
-      Declaration(specifiers, inits)  
+      Declaration(specifiers, inits)
     }
 
   def initDeclaratorList: P[InitDeclaratorList] =
@@ -37,7 +41,7 @@ object Parser {
 
   def initDeclarator: P[InitDeclarator] =
     (declarator ~ (assignOp *> initializer).?).map { case (declarator, init) =>
-      InitDeclarator(declarator, init)  
+      InitDeclarator(declarator, init)
     }
 
   def initializer: P[Initializer] =
@@ -60,7 +64,7 @@ object Parser {
       keyword("register").as(StorageClassSpecifier.Register)
 
   // TODO: finish with composite types
-  def typeSpecifier: P[TypeSpecifier] = 
+  def typeSpecifier: P[TypeSpecifier] =
     keyword("void").as(TypeSpecifier.Void) |
       keyword("char").as(TypeSpecifier.Char) |
       keyword("short").as(TypeSpecifier.Short) |
@@ -74,7 +78,7 @@ object Parser {
   def typeQualifierList: P[TypeQualifierList] =
     typeQualifier.rep.map(TypeQualifierList(_))
 
-  def typeQualifier: P[TypeQualifier] = 
+  def typeQualifier: P[TypeQualifier] =
     keyword("const").as(TypeQualifier.Const) |
       keyword("static").as(TypeQualifier.Static)
 
@@ -87,19 +91,21 @@ object Parser {
   // TODO: we are special casing identifiers in arg/function declarators
   def directDeclarator: P[DirectDeclarator] = (
     withParentheses(P.defer(declarator)).map(DirectDeclarator.Declarator(_)) |
-      (identifier.map(DirectDeclarator.Identifier(_)) ~ withParentheses(P.defer(parameterTypeList))).backtrack.map(
-        (decl, params) => DirectDeclarator.FunctionDeclarator(decl, params)
-      ) |
-      (identifier.map(DirectDeclarator.Identifier(_)) ~ withParentheses0(P.defer(identifierList).?)).backtrack.map(
-        (decl, ids) => DirectDeclarator.Identifiers(decl, ids)
-      ) |
-      identifier.map(DirectDeclarator.Identifier(_)) 
+      (identifier.map(DirectDeclarator.Identifier(_)) ~ withParentheses(
+        P.defer(parameterTypeList)
+      )).backtrack.map((decl, params) => DirectDeclarator.FunctionDeclarator(decl, params)) |
+      (identifier.map(DirectDeclarator.Identifier(_)) ~ withParentheses0(
+        P.defer(identifierList).?
+      )).backtrack.map((decl, ids) => DirectDeclarator.Identifiers(decl, ids)) |
+      identifier.map(DirectDeclarator.Identifier(_))
   ).withContext("directDeclarator")
 
-  def pointer: P[Pointer] = 
-    P.recursive { rec => 
-      (asterisk *> typeQualifierList.?.with1 ~ rec).map { case (qualifiers, pointer) => Pointer(qualifiers, Some(pointer))} |
-      (asterisk *> typeQualifierList.?).map { qualifiers => Pointer(qualifiers, None)} 
+  def pointer: P[Pointer] =
+    P.recursive { rec =>
+      (asterisk *> typeQualifierList.?.with1 ~ rec).map { case (qualifiers, pointer) =>
+        Pointer(qualifiers, Some(pointer))
+      } |
+        (asterisk *> typeQualifierList.?).map { qualifiers => Pointer(qualifiers, None) }
     }
 
   // TODO: fix
@@ -111,7 +117,7 @@ object Parser {
 
   def parameterDeclaration: P[ParameterDeclaration] =
     (declarationSpecifiers ~ declarator).map { (specifiers, declarator) =>
-      ParameterDeclaration.Declarator(specifiers, declarator)  
+      ParameterDeclaration.Declarator(specifiers, declarator)
     }
 
   def identifierList: P[IdentifierList] =
@@ -124,15 +130,16 @@ object Parser {
 
   def statement: P[Statement] = (
     jumpStatement.map(Statement.Jump(_)) |
-    compoundStatement.map(Statement.Compound(_))
+      compoundStatement.map(Statement.Compound(_))
   ).withContext("statement")
 
   def jumpStatement: P[JumpStatement] =
     (returnKeyword *> expression.? <* semicolon).map(expr => JumpStatement.Return(expr))
 
   def compoundStatement: P[CompoundStatement] =
-    (leftBrace *> P.defer0(declarationList.? ~ statementList.? <* rightBrace)).map { (declarations, statements) =>
-      CompoundStatement(declarations, statements)
+    (leftBrace *> P.defer0(declarationList.? ~ statementList.? <* rightBrace)).map {
+      (declarations, statements) =>
+        CompoundStatement(declarations, statements)
     }
 
   def withParentheses[A](p: P[A]): P[A] =
@@ -147,8 +154,10 @@ object Parser {
     assignmentExpression
 
   def assignmentExpression: P[Expression] =
-    (primaryExpression ~ (assignOp *> primaryExpression)).map((l, r) => Expression.Assignment(l, r)).backtrack |
-    primaryExpression 
+    (primaryExpression ~ (assignOp *> primaryExpression))
+      .map((l, r) => Expression.Assignment(l, r))
+      .backtrack |
+      primaryExpression
 
   def primaryExpression: P[Expression] =
     constant.map(Expression.Constant(_)) |
@@ -156,31 +165,31 @@ object Parser {
 
   def assignmentOperator: P[AssignmentOperator] =
     operator("=").as(AssignmentOperator.Assign) |
-    operator("*=").as(AssignmentOperator.StarAssign) |
-    operator("/=").as(AssignmentOperator.DivAssign) |
-    operator("%=").as(AssignmentOperator.ModAssign) |
-    operator("+=").as(AssignmentOperator.StarAssign) |
-    operator("-=").as(AssignmentOperator.MinusAssign) |
-    operator("<<=").as(AssignmentOperator.ShlAssign) |
-    operator(">>=").as(AssignmentOperator.ShrAssign) |
-    operator("&=").as(AssignmentOperator.AndAssign) |
-    operator("^=").as(AssignmentOperator.XorAssign) |
-    operator("|=").as(AssignmentOperator.OrAssign)
+      operator("*=").as(AssignmentOperator.StarAssign) |
+      operator("/=").as(AssignmentOperator.DivAssign) |
+      operator("%=").as(AssignmentOperator.ModAssign) |
+      operator("+=").as(AssignmentOperator.StarAssign) |
+      operator("-=").as(AssignmentOperator.MinusAssign) |
+      operator("<<=").as(AssignmentOperator.ShlAssign) |
+      operator(">>=").as(AssignmentOperator.ShrAssign) |
+      operator("&=").as(AssignmentOperator.AndAssign) |
+      operator("^=").as(AssignmentOperator.XorAssign) |
+      operator("|=").as(AssignmentOperator.OrAssign)
 
   // Lexical elements
   // all whitespace handling is performed at terminals
   // higher-level parsers must reference these
 
-  def constant: P[Constant] = 
+  def constant: P[Constant] =
     integerConstant.map(Constant.IntegerConstant(_))
 
   // TODO: refine with other types of constants
-  def integerConstant: P[Int] = 
+  def integerConstant: P[Int] =
     decimalConstant
 
   def decimalConstant: P[Int] =
     (nonzeroDigit ~ digit.rep0).map { (h, t) =>
-      (h :: t).mkString.toInt  
+      (h :: t).mkString.toInt
     }
 
   def keyword(t: String): P[Unit] =
@@ -208,19 +217,19 @@ object Parser {
 
   def rightBrace: P[Unit] = operator("}")
 
-  def asterisk: P[Unit] = 
+  def asterisk: P[Unit] =
     operator("*")
 
-  def whitespace: P[Unit] = 
+  def whitespace: P[Unit] =
     P.charsWhile(_.isWhitespace).void
 
   def maybeWhitespace: P0[Unit] =
     whitespace.?.void
 
-  def assignOp: P[Unit] = 
+  def assignOp: P[Unit] =
     operator("=")
 
-  def semicolon: P[Unit] = 
+  def semicolon: P[Unit] =
     operator(";")
 
   def comma: P[Unit] =

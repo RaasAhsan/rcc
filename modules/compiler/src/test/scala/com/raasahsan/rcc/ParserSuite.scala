@@ -3,7 +3,7 @@ package com.raasahsan.rcc
 import munit.FunSuite
 
 class ParserSuite extends FunSuite {
-  
+
   test("parse simple program") {
     val program = """
       int main() {

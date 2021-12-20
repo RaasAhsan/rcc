@@ -9,7 +9,7 @@ object Main {
   }
   
   """
-  
+
   def main(args: Array[String]): Unit = {
     val result = Parser.parse(program)
     println(result)
