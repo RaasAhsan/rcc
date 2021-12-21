@@ -123,7 +123,9 @@ object Parser {
   def identifierList: P[IdentifierList] =
     identifier.repSep(comma).map(IdentifierList(_))
 
-  // Statements
+  ////////////////
+  // Statements //
+  ////////////////
 
   def statementList: P[StatementList] =
     statement.rep.map(StatementList(_))

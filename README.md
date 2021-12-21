@@ -11,4 +11,9 @@ $ nasm -felf64 hello.asm
 $ ld hello.o
 ```
 
-Calling conventions for amd64 https://khoury.neu.edu/home/ntuck/courses/2018/09/cs3650/amd64_asm.html
+### Reference
+* https://wiki.osdev.org/Calling_Conventions
+* System V ABI https://wiki.osdev.org/System_V_ABI
+* C calling conventions https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf
+* Linux system call reference https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md
+* GNU AS directives https://ftp.gnu.org/old-gnu/Manuals/gas-2.9.1/html_chapter/as_7.html
