@@ -58,9 +58,27 @@ class ParserSuite extends FunSuite {
         return a + b;
       }
       int main() {
+        return 3;
+      }
+    """
+    assert(Parser.parse(program).isRight)
+  }
+
+  test("function call") {
+    val program = """
+      int main() {
         return f(2, 3);
       }
     """
+    assert(Parser.parse(program).isRight)
   }
 
+  test("array access") {
+    val program = """
+      int main() {
+        return array[a + b];
+      }
+    """
+    assert(Parser.parse(program).isRight)
+  }
 }

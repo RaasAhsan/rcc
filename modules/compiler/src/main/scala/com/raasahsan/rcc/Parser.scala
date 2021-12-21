@@ -113,7 +113,7 @@ object Parser {
     parameterList.map(ParameterTypeList(_, false))
 
   def parameterList: P[ParameterList] =
-    parameterDeclaration.rep.map(ParameterList(_))
+    parameterDeclaration.repSep(comma).map(ParameterList(_))
 
   def parameterDeclaration: P[ParameterDeclaration] =
     (declarationSpecifiers ~ declarator).map { (specifiers, declarator) =>
@@ -195,9 +195,10 @@ object Parser {
 
     import Op._
 
-    (primaryExpression ~ ((star.as(Star) | divide.as(Divide) | modulo.as(
-      Modulo
-    )) ~ primaryExpression).rep0).map { (h, t) =>
+    def op: P[Op] =
+      star.as(Star) | divide.as(Divide) | modulo.as(Modulo)
+
+    (postfixExpression ~ (op ~ postfixExpression).rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, (op, expr)) =>
         op match {
           case Star   => Expression.Times(acc, expr)
@@ -208,10 +209,36 @@ object Parser {
     }
   }
 
+  def postfixExpression: P[Expression] = {
+    enum Op {
+      case FunctionCall(args: Option[ArgumentExpressionList])
+      case ArrayGet(index: Expression)
+    }
+
+    import Op._
+
+    def op: P[Op] =
+      (leftBracket *> P.defer(expression) <* rightBracket).map(ArrayGet(_)) |
+        (leftParentheses *> P.defer0(argumentExpressionList.?) <* rightParentheses)
+          .map(FunctionCall(_))
+
+    (primaryExpression ~ op.rep0).map { (h, t) =>
+      t.foldLeft(h) { case (acc, op) =>
+        op match {
+          case FunctionCall(args) => Expression.FunctionCall(acc, args)
+          case ArrayGet(index)    => Expression.ArrayGet(acc, index)
+        }
+      }
+    }
+  }
+
   def primaryExpression: P[Expression] =
     constant.map(Expression.Constant(_)) |
       identifier.map(Expression.Identifier(_)) |
       withParentheses(P.defer(expression))
+
+  def argumentExpressionList: P[ArgumentExpressionList] =
+    assignmentExpression.repSep(comma).map(ArgumentExpressionList(_))
 
   def assignmentOperator: P[AssignmentOperator] =
     operator("=").as(AssignmentOperator.Assign) |
@@ -263,12 +290,11 @@ object Parser {
   def nondigit: P[Char] = P.charIn('_' :: ('a' to 'z').toList ::: ('A' to 'Z').toList)
 
   def leftParentheses: P[Unit] = operator("(")
-
   def rightParentheses: P[Unit] = operator(")")
-
   def leftBrace: P[Unit] = operator("{")
-
   def rightBrace: P[Unit] = operator("}")
+  def leftBracket: P[Unit] = operator("[")
+  def rightBracket: P[Unit] = operator("]")
 
   def asterisk: P[Unit] =
     operator("*")

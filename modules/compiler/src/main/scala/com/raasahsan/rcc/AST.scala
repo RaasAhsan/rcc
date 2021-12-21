@@ -127,11 +127,7 @@ object AST {
 
   final case class InitializerList(initializers: NonEmptyList[Initializer])
 
-  // enum Expression {
-  //   case Assignment(value: AssignmentExpression)
-  // }
-
-  final case class AssignmentExpression(constant: Constant)
+  final case class ArgumentExpressionList(args: NonEmptyList[Expression])
 
   enum Expression {
     case Constant(constant: AST.Constant)
@@ -142,6 +138,8 @@ object AST {
     case Times(lhs: Expression, rhs: Expression)
     case Divide(lhs: Expression, rhs: Expression)
     case Modulo(lhs: Expression, rhs: Expression)
+    case FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
+    case ArrayGet(lhs: Expression, index: Expression)
   }
 
   enum AssignmentOperator {

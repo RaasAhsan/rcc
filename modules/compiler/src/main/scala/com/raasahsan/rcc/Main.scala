@@ -4,9 +4,11 @@ object Main {
 
   val program = """
   
+      int f(int a, int b) {
+        return a + b;
+      }
       int main() {
-        int a = 35;int b = 35;
-        return b;
+        return 3;
       }
   
   """
