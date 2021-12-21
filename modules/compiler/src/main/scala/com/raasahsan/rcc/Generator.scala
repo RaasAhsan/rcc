@@ -40,10 +40,11 @@ object Generator {
     val name = functionName(fd).get
 
     val lines = List(
-      Line.Label(Label(name.value)),
+      Label(name.value).line,
       Instruction.Push(Register.rbp.operand).line,
       Instruction.Mov(Register.rbp.operand, Register.rsp.operand).line,
-      Instruction.Pop(Register.rbp.operand).line
+      Instruction.Pop(Register.rbp.operand).line,
+      Instruction.Return.line
     )
 
     Program(lines)

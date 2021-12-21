@@ -2,6 +2,7 @@ package com.raasahsan.rcc
 
 object Assembly {
 
+  // TODO: program Monoid?
   final case class Program(lines: List[Line])
 
   enum Line {
@@ -17,7 +18,9 @@ object Assembly {
     case IntelSyntax
   }
 
-  final case class Label(name: String)
+  final case class Label(name: String) {
+    def line: Line = Line.Label(this)
+  }
 
   // TODO: instruction type and list of operands is more useful perhaps?
   enum Instruction {
@@ -27,6 +30,8 @@ object Assembly {
     case Push(src: Operand.Source)
     case Pop(dst: Operand.Destination)
     case Syscall
+    case Call(label: String)
+    case Return
 
     def line: Line = Line.Instruction(this)
   }
@@ -108,15 +113,19 @@ object Assembly {
       case Directive.IntelSyntax  => ".intel_syntax noprefix"
     }
 
-  def renderInstruction(instr: Instruction): String =
+  def renderInstruction(instr: Instruction): String = {
+    import Instruction._
     instr match {
-      case Instruction.Mov(dst, src) => s"mov ${renderOperand(dst)}, ${renderOperand(src)}"
-      case Instruction.Add(dst, src) => s"add ${renderOperand(dst)}, ${renderOperand(src)}"
-      case Instruction.Sub(dst, src) => s"sub ${renderOperand(dst)}, ${renderOperand(src)}"
-      case Instruction.Push(src)     => s"push ${renderOperand(src)}"
-      case Instruction.Pop(dst)      => s"pop ${renderOperand(dst)}"
-      case Instruction.Syscall       => "syscall"
+      case Mov(dst, src) => s"mov ${renderOperand(dst)}, ${renderOperand(src)}"
+      case Add(dst, src) => s"add ${renderOperand(dst)}, ${renderOperand(src)}"
+      case Sub(dst, src) => s"sub ${renderOperand(dst)}, ${renderOperand(src)}"
+      case Push(src)     => s"push ${renderOperand(src)}"
+      case Pop(dst)      => s"pop ${renderOperand(dst)}"
+      case Syscall       => "syscall"
+      case Call(label)   => s"call $label"
+      case Return        => "ret"
     }
+  }
 
   def renderProgram(program: Program): String =
     program.lines
