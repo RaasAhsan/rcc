@@ -5,6 +5,7 @@
 
 _start:
     push rbp
+    pop rbp
     mov rbp, rsp
 
     mov rsp, 20
