@@ -29,10 +29,7 @@ object Parser {
       .withContext("functionDefinition")
 
   def declarationList: P[DeclarationList] =
-    declaration.rep.map(DeclarationList(_)).map { x =>
-      println(x)
-      x
-    }
+    declaration.rep.map(DeclarationList(_))
 
   def declaration: P[Declaration] =
     (declarationSpecifiers ~ initDeclaratorList.? <* semicolon).map { (specifiers, inits) =>
