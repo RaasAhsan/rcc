@@ -31,7 +31,8 @@ object Assembly {
     case Pop(dst: Operand.Destination)
     case Syscall
     case Call(label: String)
-    case Return
+    case Ret
+    case Nop
 
     def line: Line = Line.Instruction(this)
   }
@@ -79,13 +80,17 @@ object Assembly {
     final case class Address(addr: Assembly.Address) extends Source with Destination
   }
 
-  final case class Immediate(value: Int)
+  final case class Immediate(value: Int) {
+    def operand = Operand.Immediate(this)
+  }
 
   enum Address {
     case Direct(addr: Int)
     case Indirect(reg: Register)
     case IndirectDisplacement(reg: Register, disp: Int)
     case IndirectDisplacementScaled(reg: Register, disp: Int, index: Register, scale: Int)
+
+    def operand = Operand.Address(this)
   }
 
   def renderOperand(operand: Operand): String =
@@ -123,7 +128,8 @@ object Assembly {
       case Pop(dst)      => s"pop ${renderOperand(dst)}"
       case Syscall       => "syscall"
       case Call(label)   => s"call $label"
-      case Return        => "ret"
+      case Ret           => "ret"
+      case Nop           => "nop"
     }
   }
 
