@@ -54,17 +54,17 @@ object Generator {
     // TODO: Offset newtype
 
     val symbols = new mutable.HashMap[String, Int]
-    var offset = 0
+    var stackOffset = 0
 
-    def nextOffset(size: Int): Int =
-      offset += size
-      offset
+    def nextStackOffset(size: Int): Int =
+      stackOffset += size
+      stackOffset
 
     def allocateOrGet(name: String, size: Int): Int =
       symbols.get(name) match {
         case Some(offset) => offset
         case None =>
-          val next = nextOffset(size)
+          val next = nextStackOffset(size)
           symbols.put(name, next)
           next
       }
@@ -179,7 +179,7 @@ object Generator {
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val addr = Address.IndirectDisplacement(Register.rbp, -nextOffset(4))
+          val addr = Address.IndirectDisplacement(Register.rbp, -nextStackOffset(4))
           val gen = genL ++ genR ++ loadIntoRegister(Register.eax, assignL) ++ loadIntoRegister(
             Register.edx,
             assignR
@@ -205,15 +205,20 @@ object Generator {
 
     val gen = generateStatement(Statement.Compound(fd.statements))
 
+    // TODO: rsp is 64-bit but we're using 32-bit values for now
+    val alignedStackOffset = ((stackOffset + 8) & 0xfffffff0) + 8
+
     // TODO: maybe we can label it and jump?
     val preamble = List(
       Label(name.value).line,
-      Instruction.Push(Register.rbp.operand).line,
+      Instruction.Push(Register.rbp.operand).line, // push 8 bytes
       Instruction.Mov(Register.rbp.operand, Register.rsp.operand).line,
-      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(offset))).line
+      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(alignedStackOffset))).line
     )
 
     // TODO: the postamble here can be dead code
+    // Type system can ensure a return statement is done for typed functions
+    // for Void we may have to insert one at the end
     Program(preamble ++ gen ++ postamble)
   }
 

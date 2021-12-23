@@ -10,7 +10,9 @@ object Main {
         int a = 5;
         int b = 6;
         int c = a + b;
-        return c;
+        int d = c + b;
+        int e = d + c;
+        return d;
       }
   
   """
