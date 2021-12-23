@@ -8,9 +8,10 @@ _start:
     pop rbp
     mov rbp, rsp
 
-    mov rsp, 20
+    sub rsp, 20
 
-    mov DWORD PTR [rbp - 4], 0x20
+    sub DWORD PTR [rbp - 4], 0x20
+    mov DWORD PTR [rbp - 4], eax
 
     mov rax, 60
     mov rdi, 3

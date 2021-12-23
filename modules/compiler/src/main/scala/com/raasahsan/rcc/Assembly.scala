@@ -67,6 +67,15 @@ object Assembly {
     val rsp = Register("rsp")
     val rsi = Register("rsi")
     val rdi = Register("rdi")
+
+    val eax = Register("eax")
+    val ebx = Register("ebx")
+    val ecx = Register("ecx")
+    val edx = Register("edx")
+    val ebp = Register("ebp")
+    val esp = Register("esp")
+    val esi = Register("esi")
+    val edi = Register("edi")
   }
 
   sealed trait Operand
@@ -97,7 +106,7 @@ object Assembly {
     operand match {
       case Operand.Immediate(imm) => s"${imm.value}"
       case Operand.Register(reg)  => s"${reg.name}"
-      case Operand.Address(addr)  => s"[${renderAddress(addr)}]"
+      case Operand.Address(addr)  => s"DWORD PTR [${renderAddress(addr)}]"
     }
 
   def renderAddress(address: Address): String =

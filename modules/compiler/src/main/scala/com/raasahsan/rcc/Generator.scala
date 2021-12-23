@@ -88,32 +88,56 @@ object Generator {
       case Constant(value: Int)
     }
 
+    def postamble = List(
+      Instruction.Mov(Register.rsp.operand, Register.rbp.operand).line,
+      Instruction.Pop(Register.rbp.operand).line,
+      Instruction.Ret.line
+    )
+
     // Next, evaluate all initializers and statements, allocating storage on stack if necessary
     // Needs a register/stack allocator for subexpressions
     def generateStatement(statement: Statement): List[Line] =
       statement match {
+        case Statement.Compound(stmt) =>
+          val genDecls =
+            stmt.declarationList.map(_.declarations.toList).getOrElse(Nil).flatMap { decl =>
+              decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
+                val ident = directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
+                // TODO: we shouldn't be allocating at this point
+                val identOffset = allocateOrGet(ident.value, 4)
+                val address = Address.IndirectDisplacement(Register.rbp, -identOffset)
+                initDecl.initializer
+                  .map { init =>
+                    init match {
+                      case Initializer.Expression(expr) =>
+                        val (gen, assign) = generateExpression(expr)
+                        gen ++ loadIntoRegister(Register.eax, assign) ++ List(
+                          Instruction.Mov(address.operand, Register.eax.operand).line
+                        )
+                      case _ => ???
+                    }
+                  }
+                  .getOrElse(Nil)
+              }
+            }
+
+          val genStmts =
+            stmt.statementList.map(_.statements.toList).getOrElse(Nil).flatMap(generateStatement)
+
+          genDecls ++ genStmts
         case Statement.Expression(stmt) =>
           stmt.expr.fold(List(Instruction.Nop.line))(e => generateExpression(e)._1)
         case Statement.Jump(jump) =>
           jump match {
             case JumpStatement.Return(expr) =>
-              val gen = expr.map(generateExpression).map(_._1).getOrElse(Nil)
-              gen :+ Instruction.Ret.line
+              val gen = expr
+                .map(generateExpression)
+                .map((gen, assign) => gen ++ loadIntoRegister(Register.eax, assign))
+                .getOrElse(Nil)
+              gen ++ postamble
             case _ => ???
           }
         case _ => ???
-      }
-
-    def loadIntoRegister(reg: Register, assign: RegisterAssignment): List[Line] =
-      assign match {
-        case RegisterAssignment.Constant(c) =>
-          List(
-            Instruction.Mov(reg.operand, Immediate(c).operand).line
-          )
-        case RegisterAssignment.Memory(addr) =>
-          List(
-            Instruction.Mov(reg.operand, addr.operand).line
-          )
       }
 
     // Generate code for evaluating the expression, and the offset
@@ -143,8 +167,8 @@ object Generator {
                   )
                 case RegisterAssignment.Memory(addressR) =>
                   List(
-                    Instruction.Mov(Register.rax.operand, addressR.operand).line,
-                    Instruction.Mov(address.operand, Register.rax.operand).line
+                    Instruction.Mov(Register.eax.operand, addressR.operand).line,
+                    Instruction.Mov(address.operand, Register.eax.operand).line
                   )
               }
 
@@ -155,28 +179,42 @@ object Generator {
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val next = nextOffset(4)
-          val gen = genL ++ genR ++ loadIntoRegister(Register.rax, assignL) ++ loadIntoRegister(
-            Register.rdx,
+          val addr = Address.IndirectDisplacement(Register.rbp, -nextOffset(4))
+          val gen = genL ++ genR ++ loadIntoRegister(Register.eax, assignL) ++ loadIntoRegister(
+            Register.edx,
             assignR
           ) ++ List(
-            Instruction.Add(Register.rax.operand, Register.rdx.operand).line
+            Instruction.Add(Register.eax.operand, Register.edx.operand).line,
+            Instruction.Mov(addr.operand, Register.eax.operand).line
           )
-          gen -> RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
+          gen -> RegisterAssignment.Memory(addr)
         case _ => ???
       }
 
-    // TODO: Boilerplate for lines
-    val lines = List(
+    def loadIntoRegister(reg: Register, assign: RegisterAssignment): List[Line] =
+      assign match {
+        case RegisterAssignment.Constant(c) =>
+          List(
+            Instruction.Mov(reg.operand, Immediate(c).operand).line
+          )
+        case RegisterAssignment.Memory(addr) =>
+          List(
+            Instruction.Mov(reg.operand, addr.operand).line
+          )
+      }
+
+    val gen = generateStatement(Statement.Compound(fd.statements))
+
+    // TODO: maybe we can label it and jump?
+    val preamble = List(
       Label(name.value).line,
       Instruction.Push(Register.rbp.operand).line,
       Instruction.Mov(Register.rbp.operand, Register.rsp.operand).line,
-      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(offset))).line,
-      Instruction.Pop(Register.rbp.operand).line,
-      Instruction.Ret.line
+      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(offset))).line
     )
 
-    Program(lines)
+    // TODO: the postamble here can be dead code
+    Program(preamble ++ gen ++ postamble)
   }
 
   // TODO: we need to generate code to access the appropriate l-value. there are different syntactic forms

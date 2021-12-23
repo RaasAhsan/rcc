@@ -6,18 +6,18 @@ object Main {
 
   val program = """
   
-      int f(int a, int b) {
-        return a + b;
-      }
       int main() {
-        return 3;
+        int a = 5;
+        int b = 6;
+        int c = a + b;
+        return c;
       }
   
   """
 
   def main(args: Array[String]): Unit = {
     val result = Parser.parse(program)
-    // println(result)
+    println(result)
 
     val p = result.toOption.get
     val fds = p.externalDeclarations.toList.collect {
