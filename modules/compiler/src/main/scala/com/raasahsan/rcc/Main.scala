@@ -24,13 +24,10 @@ object Main {
     println(result)
 
     val p = result.toOption.get
-    val fds = p.externalDeclarations.toList.collect {
-      case ExternalDeclaration.FunctionDefinition(fd) => fd
-    }
+    val gen = Generator.generateTranslationUnit(p)
+    val render = Assembly.renderProgram(Assembly.Program(gen))
 
-    val gen = fds.map(fd => Assembly.renderProgram(Generator.generateFunctionDefinition(fd)))
-
-    println(gen)
+    println(render)
 
     // println(result.left.map(_.expected.map(_.context)))
   }

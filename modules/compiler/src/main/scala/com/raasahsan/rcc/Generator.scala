@@ -44,7 +44,7 @@ object Generator {
       case _                               => None
     }
 
-  def generateFunctionDefinition(fd: FunctionDefinition): Program = {
+  def generateFunctionDefinition(fd: FunctionDefinition): List[Line] = {
     val name = functionName(fd).get
 
     // Perform register allocation and code generation at the same time
@@ -270,6 +270,7 @@ object Generator {
 
     // TODO: maybe we can label it and jump?
     val preamble = List(
+      Directive.Global(name.value).line,
       Label(name.value).line,
       Instruction.Push(Register.rbp.operand).line, // push 8 bytes
       Instruction.Mov(Register.rbp.operand, Register.rsp.operand).line,
@@ -279,7 +280,20 @@ object Generator {
     // TODO: the postamble here can be dead code
     // Type system can ensure a return statement is done for typed functions
     // for Void we may have to insert one at the end
-    Program(preamble ++ gen ++ postamble)
+    preamble ++ gen ++ postamble
+  }
+
+  def generateTranslationUnit(unit: TranslationUnit): List[Line] = {
+    // TODO: revise with correct external/internal linkage semantics
+    val genFunctions = unit.externalDeclarations.toList.flatMap {
+      case ExternalDeclaration.FunctionDefinition(fd) => generateFunctionDefinition(fd)
+      case _ => Nil
+    }
+
+    List(
+      Directive.IntelSyntax.line,
+      Directive.Text.line
+    ) ++ genFunctions
   }
 
   // TODO: we need to generate code to access the appropriate l-value. there are different syntactic forms

@@ -1,15 +1,6 @@
 .intel_syntax noprefix
-.global _start
-
 .text
-
-_start:
-    call main
-
-    mov rdi, rax
-    mov rax, 60
-    syscall
-
+.global add
 add:
     push rbp
     mov rbp, rsp
@@ -25,7 +16,7 @@ add:
     mov rsp, rbp
     pop rbp
     ret
-
+.global main
 main:
     push rbp
     mov rbp, rsp
@@ -47,8 +38,3 @@ main:
     mov rsp, rbp
     pop rbp
     ret
-
-.data
-
-message:
-    .string "Hello world!\n"

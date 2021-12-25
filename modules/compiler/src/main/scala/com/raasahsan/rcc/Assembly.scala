@@ -16,6 +16,8 @@ object Assembly {
     case Text
     case Data
     case IntelSyntax
+
+    def line: Line = Line.Directive(this)
   }
 
   final case class Label(name: String) {
