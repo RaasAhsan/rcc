@@ -28,6 +28,18 @@ object Assembly {
     override def lines(a: Lines): Lines = a
   }
 
+  implicit val toLinesForInstruction: ToLines[Instruction] = new ToLines[Instruction] {
+    override def lines(a: Instruction): Lines = Lines(List(a.line))
+  }
+
+  implicit val toLinesForDirective: ToLines[Directive] = new ToLines[Directive] {
+    override def lines(a: Directive): Lines = Lines(List(a.line))
+  }
+
+  implicit val toLinesForLabel: ToLines[Label] = new ToLines[Label] {
+    override def lines(a: Label): Lines = Lines(List(a.line))
+  }
+
   // TODO: generate boilerplate
   def instructions[A0: ToLines](a0: A0): Lines =
     implicitly[ToLines[A0]].lines(a0)
@@ -85,6 +97,7 @@ object Assembly {
       )
     )
 
+  // Comments, commented lines, block comments, etc.
   enum Line {
     case Directive(value: Assembly.Directive)
     case Instruction(value: Assembly.Instruction)

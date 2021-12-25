@@ -102,9 +102,9 @@ object Generator {
     }
 
     def postamble = instructions(
-      Instruction.Mov(Register.rsp.operand, Register.rbp.operand).line,
-      Instruction.Pop(Register.rbp.operand).line,
-      Instruction.Ret.line
+      Instruction.Mov(Register.rsp.operand, Register.rbp.operand),
+      Instruction.Pop(Register.rbp.operand),
+      Instruction.Ret
     )
 
     // Next, evaluate all initializers and statements, allocating storage on stack if necessary
@@ -130,7 +130,7 @@ object Generator {
                           instructions(
                             gen,
                             loadIntoRegister(Register.eax, assign),
-                            Instruction.Mov(address.operand, Register.eax.operand).line
+                            Instruction.Mov(address.operand, Register.eax.operand)
                           )
                         case _ => ???
                       }
@@ -148,7 +148,7 @@ object Generator {
 
           genDecls |+| genStmts
         case Statement.Expression(stmt) =>
-          stmt.expr.fold(instructions(Instruction.Nop.line))(e => generateExpression(e)._1)
+          stmt.expr.fold(instructions(Instruction.Nop))(e => generateExpression(e)._1)
         case Statement.Jump(jump) =>
           jump match {
             case JumpStatement.Return(expr) =>
@@ -202,8 +202,8 @@ object Generator {
             genR,
             loadIntoRegister(Register.eax, assignL),
             loadIntoRegister(Register.edx, assignR),
-            Instruction.Add(Register.eax.operand, Register.edx.operand).line,
-            Instruction.Mov(addr.operand, Register.eax.operand).line
+            Instruction.Add(Register.eax.operand, Register.edx.operand),
+            Instruction.Mov(addr.operand, Register.eax.operand)
           ) -> RegisterAssignment.Memory(addr)
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
@@ -227,8 +227,8 @@ object Generator {
               // TODO: what do we do for void functions?
               instructions(
                 genExprs,
-                Instruction.Call(fname.value).line,
-                Instruction.Mov(returnAddr.operand, Register.eax.operand).line
+                Instruction.Call(fname.value),
+                Instruction.Mov(returnAddr.operand, Register.eax.operand)
               ) -> RegisterAssignment.Memory(returnAddr)
             case _ => ???
           }
@@ -239,16 +239,16 @@ object Generator {
       assign match {
         case RegisterAssignment.Constant(c) =>
           instructions(
-            Instruction.Mov(addr.operand, Immediate(c).operand).line
+            Instruction.Mov(addr.operand, Immediate(c).operand)
           )
         case RegisterAssignment.Memory(assignAddr) =>
           instructions(
-            Instruction.Mov(Register.eax.operand, assignAddr.operand).line,
-            Instruction.Mov(addr.operand, Register.eax.operand).line
+            Instruction.Mov(Register.eax.operand, assignAddr.operand),
+            Instruction.Mov(addr.operand, Register.eax.operand)
           )
         case RegisterAssignment.Register(srcReg) =>
           instructions(
-            Instruction.Mov(addr.operand, srcReg.operand).line
+            Instruction.Mov(addr.operand, srcReg.operand)
           )
       }
 
@@ -256,15 +256,15 @@ object Generator {
       assign match {
         case RegisterAssignment.Constant(c) =>
           instructions(
-            Instruction.Mov(reg.operand, Immediate(c).operand).line
+            Instruction.Mov(reg.operand, Immediate(c).operand)
           )
         case RegisterAssignment.Memory(addr) =>
           instructions(
-            Instruction.Mov(reg.operand, addr.operand).line
+            Instruction.Mov(reg.operand, addr.operand)
           )
         case RegisterAssignment.Register(srcReg) =>
           instructions(
-            Instruction.Mov(reg.operand, srcReg.operand).line
+            Instruction.Mov(reg.operand, srcReg.operand)
           )
       }
 
@@ -275,11 +275,11 @@ object Generator {
 
     // TODO: maybe we can label it and jump?
     val preamble = instructions(
-      Directive.Global(name.value).line,
-      Label(name.value).line,
-      Instruction.Push(Register.rbp.operand).line, // push 8 bytes
-      Instruction.Mov(Register.rbp.operand, Register.rsp.operand).line,
-      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(alignedStackOffset))).line
+      Directive.Global(name.value),
+      Label(name.value),
+      Instruction.Push(Register.rbp.operand), // push 8 bytes
+      Instruction.Mov(Register.rbp.operand, Register.rsp.operand),
+      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(alignedStackOffset)))
     )
 
     // TODO: the postamble here can be dead code
@@ -300,8 +300,8 @@ object Generator {
     }.combineAll
 
     instructions(
-      Directive.IntelSyntax.line,
-      Directive.Text.line,
+      Directive.IntelSyntax,
+      Directive.Text,
       genFunctions
     )
   }
