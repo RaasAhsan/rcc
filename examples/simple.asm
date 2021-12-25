@@ -10,33 +10,37 @@ _start:
     mov rax, 60
     syscall
 
+add:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 8
+    mov eax, edi
+    mov edx, esi
+    add eax, edx
+    mov DWORD PTR [rbp - 4], eax
+    mov eax, DWORD PTR [rbp - 4]
+    mov rsp, rbp
+    pop rbp
+    ret
+    mov rsp, rbp
+    pop rbp
+    ret
+
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 40
+    sub rsp, 24
     mov eax, 5
     mov DWORD PTR [rbp - 4], eax
     mov eax, 6
     mov DWORD PTR [rbp - 8], eax
-    mov eax, DWORD PTR [rbp - 4]
-    mov edx, DWORD PTR [rbp - 8]
-    add eax, edx
-    mov DWORD PTR [rbp - 24], eax
-    mov eax, DWORD PTR [rbp - 24]
-    mov DWORD PTR [rbp - 12], eax
-    mov eax, DWORD PTR [rbp - 12]
-    mov edx, DWORD PTR [rbp - 8]
-    add eax, edx
-    mov DWORD PTR [rbp - 28], eax
-    mov eax, DWORD PTR [rbp - 28]
+    mov edi, DWORD PTR [rbp - 4]
+    mov esi, DWORD PTR [rbp - 8]
+    call add
     mov DWORD PTR [rbp - 16], eax
     mov eax, DWORD PTR [rbp - 16]
-    mov edx, DWORD PTR [rbp - 12]
-    add eax, edx
-    mov DWORD PTR [rbp - 32], eax
-    mov eax, DWORD PTR [rbp - 32]
-    mov DWORD PTR [rbp - 20], eax
-    mov eax, DWORD PTR [rbp - 16]
+    mov DWORD PTR [rbp - 12], eax
+    mov eax, DWORD PTR [rbp - 12]
     mov rsp, rbp
     pop rbp
     ret

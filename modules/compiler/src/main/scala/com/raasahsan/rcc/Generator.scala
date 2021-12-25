@@ -1,6 +1,7 @@
 package com.raasahsan.rcc
 
 import scala.collection.mutable
+import cats.syntax.all._
 
 object Generator {
 
@@ -53,6 +54,28 @@ object Generator {
 
     // TODO: Offset newtype
 
+    // TODO: typed registers will be necessary
+    val callParameterRegisters =
+      List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
+
+    enum RegisterAssignment {
+      case Memory(address: Address)
+      case Register(reg: Assembly.Register)
+      case Constant(value: Int)
+    }
+
+    val arguments = (fd.declarator.directDeclarator match {
+      case DirectDeclarator.FunctionDeclarator(_, params) =>
+        params.parameterList.parameters.toList.map {
+          case ParameterDeclaration.Declarator(_, decl) =>
+            directDeclaratorIdentifier(decl.directDeclarator).get
+        }
+      case DirectDeclarator.Identifiers(_, None) => Nil
+      case _                                     => ???
+    }).zip(callParameterRegisters)
+      .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
+      .toMap
+
     val symbols = new mutable.HashMap[String, Int]
     var stackOffset = 0
 
@@ -81,11 +104,6 @@ object Generator {
     names.foreach { ident =>
       // handle pointers, typing here
       allocateOrGet(ident.value, 4)
-    }
-
-    enum RegisterAssignment {
-      case Memory(address: Address)
-      case Constant(value: Int)
     }
 
     def postamble = List(
@@ -151,29 +169,23 @@ object Generator {
           }
         case Expression.Identifier(ident) =>
           // TODO: this should have already been allocated
-          val next = allocateOrGet(ident.value, 4)
-          Nil -> RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
+          Nil -> (arguments.get(ident) match {
+            case Some(assign) =>
+              assign
+            case None =>
+              val next = allocateOrGet(ident.value, 4)
+              RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
+          })
         case Expression.Assignment(lhs, rhs) =>
           // TODO: Assert LHS is an l-value (identifier or array index) in the type system
           val (genL, assignL) = generateExpression(lhs)
           assignL match {
             case RegisterAssignment.Memory(address) =>
               val (genR, assignR) = generateExpression(rhs)
-              // TODO: factor this out
-              val gen = assignR match {
-                case RegisterAssignment.Constant(c) =>
-                  List(
-                    Instruction.Mov(address.operand, Immediate(c).operand).line
-                  )
-                case RegisterAssignment.Memory(addressR) =>
-                  List(
-                    Instruction.Mov(Register.eax.operand, addressR.operand).line,
-                    Instruction.Mov(address.operand, Register.eax.operand).line
-                  )
-              }
-
+              val gen = loadIntoAddress(address, assignR)
               (genL ++ genR ++ gen) -> assignL
             case RegisterAssignment.Constant(_) => throw new RuntimeException("invalid lvalue")
+            case RegisterAssignment.Register(_) => throw new RuntimeException("unsupported")
           }
         case Expression.Plus(lhs, rhs) =>
           // TODO: helper function to load assigned register into somewhere
@@ -188,7 +200,51 @@ object Generator {
             Instruction.Mov(addr.operand, Register.eax.operand).line
           )
           gen -> RegisterAssignment.Memory(addr)
+        case Expression.FunctionCall(fexpr, fargs) =>
+          fexpr match {
+            case Expression.Identifier(fname) =>
+              val args = fargs.map(_.args.toList).getOrElse(Nil)
+              val returnAddr = Address.IndirectDisplacement(Register.rbp, -nextStackOffset(4))
+
+              // TODO: more than 6 args will require changes to how we calculate stack offsets
+              // and perform 16-byte rsp alignment
+              if (args.length > 6) {
+                throw new RuntimeException("more than 6 arguments")
+              }
+              val genExprs = callParameterRegisters
+                .zip(args)
+                .map { (register, expr) =>
+                  val (genExpr, assignExpr) = generateExpression(expr)
+                  genExpr ++ loadIntoRegister(register, assignExpr)
+                }
+                .combineAll
+
+              // TODO: what do we do for void functions?
+              val gen = genExprs ++ List(
+                Instruction.Call(fname.value).line,
+                Instruction.Mov(returnAddr.operand, Register.eax.operand).line
+              )
+              gen -> RegisterAssignment.Memory(returnAddr)
+            case _ => ???
+          }
         case _ => ???
+      }
+
+    def loadIntoAddress(addr: Address, assign: RegisterAssignment): List[Line] =
+      assign match {
+        case RegisterAssignment.Constant(c) =>
+          List(
+            Instruction.Mov(addr.operand, Immediate(c).operand).line
+          )
+        case RegisterAssignment.Memory(assignAddr) =>
+          List(
+            Instruction.Mov(Register.eax.operand, assignAddr.operand).line,
+            Instruction.Mov(addr.operand, Register.eax.operand).line
+          )
+        case RegisterAssignment.Register(srcReg) =>
+          List(
+            Instruction.Mov(addr.operand, srcReg.operand).line
+          )
       }
 
     def loadIntoRegister(reg: Register, assign: RegisterAssignment): List[Line] =
@@ -200,6 +256,10 @@ object Generator {
         case RegisterAssignment.Memory(addr) =>
           List(
             Instruction.Mov(reg.operand, addr.operand).line
+          )
+        case RegisterAssignment.Register(srcReg) =>
+          List(
+            Instruction.Mov(reg.operand, srcReg.operand).line
           )
       }
 

@@ -76,6 +76,9 @@ object Assembly {
     val esp = Register("esp")
     val esi = Register("esi")
     val edi = Register("edi")
+
+    val e8 = Register("e8")
+    val e9 = Register("e9")
   }
 
   sealed trait Operand

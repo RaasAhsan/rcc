@@ -5,7 +5,7 @@
 
 _start:
     sub rsp, 120
-    mov rax, 60
+    mov eax, rbx
     mov rdi, rsp
     syscall
 

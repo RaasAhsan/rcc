@@ -5,14 +5,16 @@ import com.raasahsan.rcc.AST.ExternalDeclaration
 object Main {
 
   val program = """
+
+      int add(int x, int y) {
+        return x + y;
+      }
   
       int main() {
         int a = 5;
         int b = 6;
-        int c = a + b;
-        int d = c + b;
-        int e = d + c;
-        return d;
+        int c = add(a, b);
+        return c;
       }
   
   """

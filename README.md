@@ -17,3 +17,4 @@ $ ld hello.o
 * C calling conventions https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf
 * Linux system call reference https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md
 * GNU AS directives https://ftp.gnu.org/old-gnu/Manuals/gas-2.9.1/html_chapter/as_7.html
+* x86_64 ABI spec https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
