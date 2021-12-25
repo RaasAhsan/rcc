@@ -287,7 +287,7 @@ object Generator {
     // TODO: revise with correct external/internal linkage semantics
     val genFunctions = unit.externalDeclarations.toList.flatMap {
       case ExternalDeclaration.FunctionDefinition(fd) => generateFunctionDefinition(fd)
-      case _ => Nil
+      case _                                          => Nil
     }
 
     List(

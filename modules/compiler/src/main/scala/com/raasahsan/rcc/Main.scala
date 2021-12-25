@@ -27,8 +27,9 @@ object Main {
     val gen = Generator.generateTranslationUnit(p)
     val render = Assembly.renderProgram(Assembly.Program(gen))
 
-    println(render)
+    val outDir = os.pwd / "examples"
+    os.write.over(outDir / "simple.asm", render)
 
-    // println(result.left.map(_.expected.map(_.context)))
+    println("Wrote file")
   }
 }

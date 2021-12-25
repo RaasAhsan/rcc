@@ -8,6 +8,7 @@ lazy val compiler = project
   .settings(
     fork / run := true,
     libraryDependencies ++= Seq(
-      Dependencies.catsParse
+      Dependencies.catsParse,
+      Dependencies.osLib
     )
   )
