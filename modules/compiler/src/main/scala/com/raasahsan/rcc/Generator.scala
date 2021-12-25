@@ -8,10 +8,9 @@ object Generator {
   import Assembly._
   import AST._
 
-  def generate(unit: TranslationUnit): Int = {
-
-    ???
-  }
+  // TODO: typed registers will be necessary
+  val CallParameterRegisters =
+    List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
 
   def findDeclarations(statement: Statement): List[Declaration] =
     statement match {
@@ -44,7 +43,7 @@ object Generator {
       case _                               => None
     }
 
-  def generateFunctionDefinition(fd: FunctionDefinition): List[Line] = {
+  def generateFunctionDefinition(fd: FunctionDefinition): Lines = {
     val name = functionName(fd).get
 
     // Perform register allocation and code generation at the same time
@@ -53,10 +52,6 @@ object Generator {
     // TODO: RegisterAllocator class?
 
     // TODO: Offset newtype
-
-    // TODO: typed registers will be necessary
-    val callParameterRegisters =
-      List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
 
     enum RegisterAssignment {
       case Memory(address: Address)
@@ -72,7 +67,7 @@ object Generator {
         }
       case DirectDeclarator.Identifiers(_, None) => Nil
       case _                                     => ???
-    }).zip(callParameterRegisters)
+    }).zip(CallParameterRegisters)
       .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
       .toMap
 
@@ -106,7 +101,7 @@ object Generator {
       allocateOrGet(ident.value, 4)
     }
 
-    def postamble = List(
+    def postamble = instructions(
       Instruction.Mov(Register.rsp.operand, Register.rbp.operand).line,
       Instruction.Pop(Register.rbp.operand).line,
       Instruction.Ret.line
@@ -114,45 +109,54 @@ object Generator {
 
     // Next, evaluate all initializers and statements, allocating storage on stack if necessary
     // Needs a register/stack allocator for subexpressions
-    def generateStatement(statement: Statement): List[Line] =
+    def generateStatement(statement: Statement): Lines =
       statement match {
         case Statement.Compound(stmt) =>
           val genDecls =
-            stmt.declarationList.map(_.declarations.toList).getOrElse(Nil).flatMap { decl =>
-              decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
-                val ident = directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
-                // TODO: we shouldn't be allocating at this point
-                val identOffset = allocateOrGet(ident.value, 4)
-                val address = Address.IndirectDisplacement(Register.rbp, -identOffset)
-                initDecl.initializer
-                  .map { init =>
-                    init match {
-                      case Initializer.Expression(expr) =>
-                        val (gen, assign) = generateExpression(expr)
-                        gen ++ loadIntoRegister(Register.eax, assign) ++ List(
-                          Instruction.Mov(address.operand, Register.eax.operand).line
-                        )
-                      case _ => ???
+            stmt.declarationList
+              .map(_.declarations.toList)
+              .getOrElse(Nil)
+              .flatMap { decl =>
+                decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
+                  val ident = directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
+                  // TODO: we shouldn't be allocating at this point
+                  val identOffset = allocateOrGet(ident.value, 4)
+                  val address = Address.IndirectDisplacement(Register.rbp, -identOffset)
+                  initDecl.initializer
+                    .map { init =>
+                      init match {
+                        case Initializer.Expression(expr) =>
+                          val (gen, assign) = generateExpression(expr)
+                          instructions(
+                            gen,
+                            loadIntoRegister(Register.eax, assign),
+                            Instruction.Mov(address.operand, Register.eax.operand).line
+                          )
+                        case _ => ???
+                      }
                     }
-                  }
-                  .getOrElse(Nil)
+                }
               }
-            }
+              .combineAll
 
           val genStmts =
-            stmt.statementList.map(_.statements.toList).getOrElse(Nil).flatMap(generateStatement)
+            stmt.statementList
+              .map(_.statements.toList)
+              .getOrElse(Nil)
+              .map(generateStatement)
+              .combineAll
 
-          genDecls ++ genStmts
+          genDecls |+| genStmts
         case Statement.Expression(stmt) =>
-          stmt.expr.fold(List(Instruction.Nop.line))(e => generateExpression(e)._1)
+          stmt.expr.fold(instructions(Instruction.Nop.line))(e => generateExpression(e)._1)
         case Statement.Jump(jump) =>
           jump match {
             case JumpStatement.Return(expr) =>
               val gen = expr
                 .map(generateExpression)
-                .map((gen, assign) => gen ++ loadIntoRegister(Register.eax, assign))
-                .getOrElse(Nil)
-              gen ++ postamble
+                .map((gen, assign) => gen |+| loadIntoRegister(Register.eax, assign))
+                .getOrElse(Lines.empty)
+              gen |+| postamble
             case _ => ???
           }
         case _ => ???
@@ -160,16 +164,17 @@ object Generator {
 
     // Generate code for evaluating the expression, and the offset
     // where the result is stored in memory.
-    def generateExpression(expr: Expression): (List[Line], RegisterAssignment) =
+    def generateExpression(expr: Expression): (Lines, RegisterAssignment) =
       expr match {
         case Expression.Constant(const) =>
           const match {
-            case Constant.IntegerConstant(value) => (Nil, RegisterAssignment.Constant(value))
-            case _                               => ???
+            case Constant.IntegerConstant(value) =>
+              (Lines.empty, RegisterAssignment.Constant(value))
+            case _ => ???
           }
         case Expression.Identifier(ident) =>
           // TODO: this should have already been allocated
-          Nil -> (arguments.get(ident) match {
+          Lines.empty -> (arguments.get(ident) match {
             case Some(assign) =>
               assign
             case None =>
@@ -183,7 +188,7 @@ object Generator {
             case RegisterAssignment.Memory(address) =>
               val (genR, assignR) = generateExpression(rhs)
               val gen = loadIntoAddress(address, assignR)
-              (genL ++ genR ++ gen) -> assignL
+              instructions(genL, genR, gen) -> assignL
             case RegisterAssignment.Constant(_) => throw new RuntimeException("invalid lvalue")
             case RegisterAssignment.Register(_) => throw new RuntimeException("unsupported")
           }
@@ -192,14 +197,14 @@ object Generator {
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
           val addr = Address.IndirectDisplacement(Register.rbp, -nextStackOffset(4))
-          val gen = genL ++ genR ++ loadIntoRegister(Register.eax, assignL) ++ loadIntoRegister(
-            Register.edx,
-            assignR
-          ) ++ List(
+          instructions(
+            genL,
+            genR,
+            loadIntoRegister(Register.eax, assignL),
+            loadIntoRegister(Register.edx, assignR),
             Instruction.Add(Register.eax.operand, Register.edx.operand).line,
             Instruction.Mov(addr.operand, Register.eax.operand).line
-          )
-          gen -> RegisterAssignment.Memory(addr)
+          ) -> RegisterAssignment.Memory(addr)
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
             case Expression.Identifier(fname) =>
@@ -211,54 +216,54 @@ object Generator {
               if (args.length > 6) {
                 throw new RuntimeException("more than 6 arguments")
               }
-              val genExprs = callParameterRegisters
+              val genExprs = CallParameterRegisters
                 .zip(args)
                 .map { (register, expr) =>
                   val (genExpr, assignExpr) = generateExpression(expr)
-                  genExpr ++ loadIntoRegister(register, assignExpr)
+                  genExpr |+| loadIntoRegister(register, assignExpr)
                 }
                 .combineAll
 
               // TODO: what do we do for void functions?
-              val gen = genExprs ++ List(
+              instructions(
+                genExprs,
                 Instruction.Call(fname.value).line,
                 Instruction.Mov(returnAddr.operand, Register.eax.operand).line
-              )
-              gen -> RegisterAssignment.Memory(returnAddr)
+              ) -> RegisterAssignment.Memory(returnAddr)
             case _ => ???
           }
         case _ => ???
       }
 
-    def loadIntoAddress(addr: Address, assign: RegisterAssignment): List[Line] =
+    def loadIntoAddress(addr: Address, assign: RegisterAssignment): Lines =
       assign match {
         case RegisterAssignment.Constant(c) =>
-          List(
+          instructions(
             Instruction.Mov(addr.operand, Immediate(c).operand).line
           )
         case RegisterAssignment.Memory(assignAddr) =>
-          List(
+          instructions(
             Instruction.Mov(Register.eax.operand, assignAddr.operand).line,
             Instruction.Mov(addr.operand, Register.eax.operand).line
           )
         case RegisterAssignment.Register(srcReg) =>
-          List(
+          instructions(
             Instruction.Mov(addr.operand, srcReg.operand).line
           )
       }
 
-    def loadIntoRegister(reg: Register, assign: RegisterAssignment): List[Line] =
+    def loadIntoRegister(reg: Register, assign: RegisterAssignment): Lines =
       assign match {
         case RegisterAssignment.Constant(c) =>
-          List(
+          instructions(
             Instruction.Mov(reg.operand, Immediate(c).operand).line
           )
         case RegisterAssignment.Memory(addr) =>
-          List(
+          instructions(
             Instruction.Mov(reg.operand, addr.operand).line
           )
         case RegisterAssignment.Register(srcReg) =>
-          List(
+          instructions(
             Instruction.Mov(reg.operand, srcReg.operand).line
           )
       }
@@ -269,7 +274,7 @@ object Generator {
     val alignedStackOffset = ((stackOffset + 8) & 0xfffffff0) + 8
 
     // TODO: maybe we can label it and jump?
-    val preamble = List(
+    val preamble = instructions(
       Directive.Global(name.value).line,
       Label(name.value).line,
       Instruction.Push(Register.rbp.operand).line, // push 8 bytes
@@ -280,20 +285,25 @@ object Generator {
     // TODO: the postamble here can be dead code
     // Type system can ensure a return statement is done for typed functions
     // for Void we may have to insert one at the end
-    preamble ++ gen ++ postamble
+    instructions(
+      preamble,
+      gen,
+      postamble
+    )
   }
 
-  def generateTranslationUnit(unit: TranslationUnit): List[Line] = {
+  def generateTranslationUnit(unit: TranslationUnit): Lines = {
     // TODO: revise with correct external/internal linkage semantics
-    val genFunctions = unit.externalDeclarations.toList.flatMap {
+    val genFunctions = unit.externalDeclarations.toList.map {
       case ExternalDeclaration.FunctionDefinition(fd) => generateFunctionDefinition(fd)
-      case _                                          => Nil
-    }
+      case _                                          => Lines.empty
+    }.combineAll
 
-    List(
+    instructions(
       Directive.IntelSyntax.line,
-      Directive.Text.line
-    ) ++ genFunctions
+      Directive.Text.line,
+      genFunctions
+    )
   }
 
   // TODO: we need to generate code to access the appropriate l-value. there are different syntactic forms

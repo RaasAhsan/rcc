@@ -25,7 +25,7 @@ object Main {
 
     val p = result.toOption.get
     val gen = Generator.generateTranslationUnit(p)
-    val render = Assembly.renderProgram(Assembly.Program(gen))
+    val render = Assembly.renderProgram(gen)
 
     val outDir = os.pwd / "examples"
     os.write.over(outDir / "simple.asm", render)

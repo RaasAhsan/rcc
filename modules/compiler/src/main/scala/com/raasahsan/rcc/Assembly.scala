@@ -1,14 +1,95 @@
 package com.raasahsan.rcc
 
+import cats.Monoid
+import cats.syntax.all._
+
 object Assembly {
 
-  // TODO: program Monoid?
-  final case class Program(lines: List[Line])
+  final case class Lines(lines: List[Line])
+
+  object Lines {
+    val empty = Lines(Nil)
+  }
+
+  trait ToLines[A] {
+    def lines(a: A): Lines
+  }
+
+  implicit val catsMonoidForLines: Monoid[Lines] = new Monoid[Lines] {
+    override def empty: Lines = Lines.empty
+    override def combine(a: Lines, b: Lines): Lines = Lines(a.lines ++ b.lines)
+  }
+
+  implicit val toLinesForLine: ToLines[Line] = new ToLines[Line] {
+    override def lines(a: Line): Lines = Lines(List(a))
+  }
+
+  implicit val toLinesForLines: ToLines[Lines] = new ToLines[Lines] {
+    override def lines(a: Lines): Lines = a
+  }
+
+  // TODO: generate boilerplate
+  def instructions[A0: ToLines](a0: A0): Lines =
+    implicitly[ToLines[A0]].lines(a0)
+
+  def instructions[A0: ToLines, A1: ToLines](a0: A0, a1: A1): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1)
+      )
+    )
+
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines](a0: A0, a1: A1, a2: A2): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2)
+      )
+    )
+
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines](
+      a0: A0,
+      a1: A1,
+      a2: A2,
+      a3: A3,
+      a4: A4
+  ): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2),
+        implicitly[ToLines[A3]].lines(a3),
+        implicitly[ToLines[A4]].lines(a4)
+      )
+    )
+
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines, A5: ToLines](
+      a0: A0,
+      a1: A1,
+      a2: A2,
+      a3: A3,
+      a4: A4,
+      a5: A5
+  ): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2),
+        implicitly[ToLines[A3]].lines(a3),
+        implicitly[ToLines[A4]].lines(a4),
+        implicitly[ToLines[A5]].lines(a5)
+      )
+    )
 
   enum Line {
     case Directive(value: Assembly.Directive)
     case Instruction(value: Assembly.Instruction)
     case Label(value: Assembly.Label)
+    case Newline
   }
 
   enum Directive {
@@ -147,12 +228,13 @@ object Assembly {
     }
   }
 
-  def renderProgram(program: Program): String =
-    program.lines
+  def renderProgram(lines: Lines): String =
+    lines.lines
       .map {
         case Line.Directive(dir)     => renderDirective(dir)
         case Line.Label(label)       => s"${label.name}:"
         case Line.Instruction(instr) => s"    ${renderInstruction(instr)}"
+        case Line.Newline            => "\n"
       }
       .mkString("", "\n", "\n")
 

@@ -1,7 +1,17 @@
 
 lazy val root = project
   .in(file("."))
-  .aggregate(compiler)
+  .aggregate(cli, compiler)
+
+lazy val cli = project
+  .in(file("modules/cli"))
+  .settings(
+    fork / run := true,
+    libraryDependencies ++= Seq(
+      Dependencies.decline
+    )
+  )
+  .dependsOn(compiler)
 
 lazy val compiler = project
   .in(file("modules/compiler"))
