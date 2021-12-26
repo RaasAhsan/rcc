@@ -13,8 +13,10 @@ object Main {
       int foo(int x) {
         if (x) {
           return 3;
-        } else {
+        } else if (x + 1) {
           return 4;
+        } else {
+          return 5;
         }
       }
   
