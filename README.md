@@ -5,7 +5,7 @@ C compiler, references https://port70.net/~nsz/c/c89/c89-draft.html
 ```
 $ gcc -c simple.c
 
-$ ld -o simple /usr/lib/aarch64-linux-gnu/crt1.o /usr/lib/aarch64-linux-gnu/crti.o simple.o -lc /usr/lib/aarch64-linux-gnu/crtn.o
+$ ld -o simple2 -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o simple.o -lc /usr/lib/x86_64-linux-gnu/crtn.o
 
 $ nasm -felf64 hello.asm
 $ ld hello.o

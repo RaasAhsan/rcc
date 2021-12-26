@@ -1,5 +1,6 @@
 .intel_syntax noprefix
 .text
+
 .global add
 add:
     push rbp
@@ -58,13 +59,29 @@ L2:
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 24
-    mov edi, 1
-    call foo
-    mov DWORD PTR [rbp - 8], eax
-    mov eax, DWORD PTR [rbp - 8]
+    sub rsp, 40
+    mov edi, 50
+    call putchar
     mov DWORD PTR [rbp - 4], eax
-    mov eax, DWORD PTR [rbp - 4]
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 8], eax
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 12], eax
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 16], eax
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 20], eax
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 24], eax
+    mov edi, 50
+    call putchar
+    mov DWORD PTR [rbp - 28], eax
+    mov eax, 3
     mov rsp, rbp
     pop rbp
     ret

@@ -21,8 +21,14 @@ object Main {
       }
   
       int main() {
-        int z = foo(1);
-        return z;
+        putchar(50);
+        putchar(50);
+        putchar(50);
+        putchar(50);
+        putchar(50);
+        putchar(50);
+        putchar(50);
+        return 3;
       }
   
   """
