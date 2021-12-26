@@ -1,9 +1,16 @@
+int add(int x, int y) {
+    return x + y;
+}
 
-void display(int a) {
-    int x = 3+3;
+int foo(int x) {
+if (x) {
+    return 3;
+} else {
+    return 4;
+}
 }
 
 int main() {
-    display(3, 4);
-    return 3;
+int z = foo(0);
+return z;
 }

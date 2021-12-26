@@ -9,12 +9,18 @@ object Main {
       int add(int x, int y) {
         return x + y;
       }
+
+      int foo(int x) {
+        if (x) {
+          return 3;
+        } else {
+          return 4;
+        }
+      }
   
       int main() {
-        int a = 5;
-        int b = 6;
-        int c = add(a, b);
-        return c;
+        int z = foo(1);
+        return z;
       }
   
   """

@@ -73,6 +73,13 @@ object Generator {
 
     val symbols = new mutable.HashMap[String, RegisterAssignment]
     var stackOffset = 0
+    // Labels have function scope
+    var labelIndex = 0
+
+    def nextLabel(): String = {
+      labelIndex += 1
+      s"L$labelIndex"
+    }
 
     def allocateNamed(name: String, size: Int): RegisterAssignment = {
       val assign = allocate(size)
@@ -140,6 +147,38 @@ object Generator {
                 .getOrElse(Lines.empty)
               gen |+| postamble
             case _ => ???
+          }
+        case Statement.Selection(stmt) =>
+          stmt match {
+            case SelectionStatement.If(condition, consequent, alternative) =>
+              val (gen, assign) = generateExpression(condition)
+
+              alternative match {
+                case Some(alternativeStmt) =>
+                  val alt = nextLabel()
+                  val end = nextLabel()
+                  instructions(
+                    gen,
+                    loadIntoRegister(Register.eax, assign),
+                    Instruction.Cmp(Register.eax.operand, Immediate(0).operand),
+                    Instruction.Je(alt),
+                    generateStatement(consequent),
+                    Instruction.Jmp(end),
+                    Label(alt),
+                    generateStatement(alternativeStmt),
+                    Label(end)
+                  )
+                case None => 
+                  val end = nextLabel()
+                  instructions(
+                    gen,
+                    loadIntoRegister(Register.eax, assign),
+                    Instruction.Cmp(Register.eax.operand, Immediate(0).operand),
+                    Instruction.Jne(end),
+                    generateStatement(consequent),
+                    Label(end)
+                  )
+              }
           }
         case _ => ???
       }

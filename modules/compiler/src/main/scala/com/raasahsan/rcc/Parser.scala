@@ -151,7 +151,7 @@ object Parser {
       .withContext("compoundStatement")
 
   def selectionStatement: P[SelectionStatement] =
-      ((ifKeyword *> leftParentheses *> (expression <* rightParentheses)) ~ statement ~ (elseKeyword *> statement).?).map { 
+      (ifKeyword *> (leftParentheses *> (expression <* rightParentheses)) ~ P.defer(statement) ~ (elseKeyword *> P.defer(statement)).?).map { 
         case ((condition, consequent), alternative) =>
           SelectionStatement.If(condition, consequent, alternative)
       }
@@ -271,12 +271,16 @@ object Parser {
 
   // TODO: refine with other types of constants
   def integerConstant: P[Int] =
-    decimalConstant
+    decimalConstant.backtrack |
+    octalConstant
 
   def decimalConstant: P[Int] =
     (nonzeroDigit ~ digit.rep0).map { (h, t) =>
       (h :: t).mkString.toInt
     }
+    
+  def octalConstant: P[Int] =
+    zero.as(0)
 
   def keyword(t: String): P[Unit] =
     P.string(t) <* maybeWhitespace
@@ -293,9 +297,8 @@ object Parser {
       .map(Identifier(_))
 
   def digit: P[Char] = P.charIn(('0' to '9').toList)
-
   def nonzeroDigit: P[Char] = P.charIn(('1' to '9').toList)
-
+  def zero: P[Unit] = P.char('0')
   def nondigit: P[Char] = P.charIn('_' :: ('a' to 'z').toList ::: ('A' to 'Z').toList)
 
   def leftParentheses: P[Unit] = operator("(")

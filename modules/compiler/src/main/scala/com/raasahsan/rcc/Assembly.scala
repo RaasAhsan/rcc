@@ -112,6 +112,54 @@ object Assembly {
       )
     )
 
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines, A5: ToLines, A6: ToLines, A7: ToLines](
+      a0: A0,
+      a1: A1,
+      a2: A2,
+      a3: A3,
+      a4: A4,
+      a5: A5,
+      a6: A6,
+      a7: A7
+  ): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2),
+        implicitly[ToLines[A3]].lines(a3),
+        implicitly[ToLines[A4]].lines(a4),
+        implicitly[ToLines[A5]].lines(a5),
+        implicitly[ToLines[A6]].lines(a6),
+        implicitly[ToLines[A7]].lines(a7)
+      )
+    )
+
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines, A5: ToLines, A6: ToLines, A7: ToLines, A8: ToLines](
+      a0: A0,
+      a1: A1,
+      a2: A2,
+      a3: A3,
+      a4: A4,
+      a5: A5,
+      a6: A6,
+      a7: A7,
+      a8: A8
+  ): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2),
+        implicitly[ToLines[A3]].lines(a3),
+        implicitly[ToLines[A4]].lines(a4),
+        implicitly[ToLines[A5]].lines(a5),
+        implicitly[ToLines[A6]].lines(a6),
+        implicitly[ToLines[A7]].lines(a7),
+        implicitly[ToLines[A8]].lines(a8)
+      )
+    )
+
   // Comments, commented lines, block comments, etc.
   enum Line {
     case Directive(value: Assembly.Directive)
@@ -144,6 +192,10 @@ object Assembly {
     case Call(label: String)
     case Ret
     case Nop
+    case Cmp(first: Operand, second: Operand)
+    case Jmp(label: String)
+    case Je(label: String)
+    case Jne(label: String)
 
     def line: Line = Line.Instruction(this)
   }
@@ -253,6 +305,10 @@ object Assembly {
       case Call(label)   => s"call $label"
       case Ret           => "ret"
       case Nop           => "nop"
+      case Cmp(a, b)     => s"cmp ${renderOperand(a)}, ${renderOperand(b)}"
+      case Jmp(label)    => s"jmp $label"
+      case Je(label)     => s"je $label"
+      case Jne(label)    => s"jne $label"
     }
   }
 
