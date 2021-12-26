@@ -53,6 +53,12 @@ object Generator {
 
     // TODO: Offset newtype
 
+    enum RegisterAssignment {
+      case Memory(addr: Assembly.Address)
+      case Register(reg: Assembly.Register)
+      case Constant(value: Int)
+    }
+
     val arguments = (fd.declarator.directDeclarator match {
       case DirectDeclarator.FunctionDeclarator(_, params) =>
         params.parameterList.parameters.toList.map {
@@ -68,20 +74,15 @@ object Generator {
     val symbols = new mutable.HashMap[String, RegisterAssignment]
     var stackOffset = 0
 
-    def nextStackOffset(size: Int): Int =
-      stackOffset += size
-      stackOffset
-
     def allocateNamed(name: String, size: Int): RegisterAssignment = {
-      val next = nextStackOffset(size)
       val assign = allocate(size)
       symbols.put(name, assign)
       assign
     }
 
     def allocate(size: Int): RegisterAssignment = {
-      val next = nextStackOffset(size)
-      RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
+      stackOffset += size
+      RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -stackOffset))
     }
 
     def get(name: String): RegisterAssignment =
@@ -214,9 +215,9 @@ object Generator {
 
     def load(target: RegisterAssignment, source: RegisterAssignment): Lines =
       target match {
-        case RegisterAssignment.Memory(addr) => 
+        case RegisterAssignment.Memory(addr) =>
           loadIntoAddress(addr, source)
-        case RegisterAssignment.Register(reg) => 
+        case RegisterAssignment.Register(reg) =>
           loadIntoRegister(reg, source)
         case _ => ???
       }
