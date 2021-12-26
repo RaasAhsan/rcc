@@ -53,12 +53,6 @@ object Generator {
 
     // TODO: Offset newtype
 
-    enum RegisterAssignment {
-      case Memory(address: Address)
-      case Register(reg: Assembly.Register)
-      case Constant(value: Int)
-    }
-
     val arguments = (fd.declarator.directDeclarator match {
       case DirectDeclarator.FunctionDeclarator(_, params) =>
         params.parameterList.parameters.toList.map {
@@ -71,35 +65,27 @@ object Generator {
       .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
       .toMap
 
-    val symbols = new mutable.HashMap[String, Int]
+    val symbols = new mutable.HashMap[String, RegisterAssignment]
     var stackOffset = 0
 
     def nextStackOffset(size: Int): Int =
       stackOffset += size
       stackOffset
 
-    def allocateOrGet(name: String, size: Int): Int =
-      symbols.get(name) match {
-        case Some(offset) => offset
-        case None =>
-          val next = nextStackOffset(size)
-          symbols.put(name, next)
-          next
-      }
-
-    // Allocate storage on the stack for all local variables, including nested compounds
-    val declarations = findDeclarations(Statement.Compound(fd.statements))
-    val names = declarations.flatMap { decl =>
-      decl.initDeclaratorList.get.declarators.toList.map { initDecl =>
-        // TODO: handle pointers, typing here
-        directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
-      }
+    def allocateNamed(name: String, size: Int): RegisterAssignment = {
+      val next = nextStackOffset(size)
+      val assign = allocate(size)
+      symbols.put(name, assign)
+      assign
     }
 
-    names.foreach { ident =>
-      // handle pointers, typing here
-      allocateOrGet(ident.value, 4)
+    def allocate(size: Int): RegisterAssignment = {
+      val next = nextStackOffset(size)
+      RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
     }
+
+    def get(name: String): RegisterAssignment =
+      symbols.get(name).get
 
     def postamble = instructions(
       Instruction.Mov(Register.rsp.operand, Register.rbp.operand),
@@ -119,21 +105,16 @@ object Generator {
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
                   val ident = directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
-                  // TODO: we shouldn't be allocating at this point
-                  val identOffset = allocateOrGet(ident.value, 4)
-                  val address = Address.IndirectDisplacement(Register.rbp, -identOffset)
+                  val storage = allocateNamed(ident.value, 4)
                   initDecl.initializer
-                    .map { init =>
-                      init match {
-                        case Initializer.Expression(expr) =>
-                          val (gen, assign) = generateExpression(expr)
-                          instructions(
-                            gen,
-                            loadIntoRegister(Register.eax, assign),
-                            Instruction.Mov(address.operand, Register.eax.operand)
-                          )
-                        case _ => ???
-                      }
+                    .map {
+                      case Initializer.Expression(expr) =>
+                        val (gen, assign) = generateExpression(expr)
+                        instructions(
+                          gen,
+                          load(storage, assign)
+                        )
+                      case _ => ???
                     }
                 }
               }
@@ -173,43 +154,39 @@ object Generator {
             case _ => ???
           }
         case Expression.Identifier(ident) =>
-          // TODO: this should have already been allocated
           Lines.empty -> (arguments.get(ident) match {
             case Some(assign) =>
               assign
             case None =>
-              val next = allocateOrGet(ident.value, 4)
-              RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -next))
+              get(ident.value)
           })
         case Expression.Assignment(lhs, rhs) =>
           // TODO: Assert LHS is an l-value (identifier or array index) in the type system
           val (genL, assignL) = generateExpression(lhs)
-          assignL match {
-            case RegisterAssignment.Memory(address) =>
-              val (genR, assignR) = generateExpression(rhs)
-              val gen = loadIntoAddress(address, assignR)
-              instructions(genL, genR, gen) -> assignL
-            case RegisterAssignment.Constant(_) => throw new RuntimeException("invalid lvalue")
-            case RegisterAssignment.Register(_) => throw new RuntimeException("unsupported")
-          }
+          val (genR, assignR) = generateExpression(rhs)
+          instructions(
+            genL,
+            genR,
+            load(assignL, assignR)
+          ) -> assignL
         case Expression.Plus(lhs, rhs) =>
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val addr = Address.IndirectDisplacement(Register.rbp, -nextStackOffset(4))
+          val resultAlloc = allocate(4)
           instructions(
             genL,
             genR,
             loadIntoRegister(Register.eax, assignL),
             loadIntoRegister(Register.edx, assignR),
             Instruction.Add(Register.eax.operand, Register.edx.operand),
-            Instruction.Mov(addr.operand, Register.eax.operand)
-          ) -> RegisterAssignment.Memory(addr)
+            load(resultAlloc, RegisterAssignment.Register(Register.eax))
+          ) -> resultAlloc
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
             case Expression.Identifier(fname) =>
               val args = fargs.map(_.args.toList).getOrElse(Nil)
-              val returnAddr = Address.IndirectDisplacement(Register.rbp, -nextStackOffset(4))
+              val returnAlloc = allocate(4)
 
               // TODO: more than 6 args will require changes to how we calculate stack offsets
               // and perform 16-byte rsp alignment
@@ -228,10 +205,19 @@ object Generator {
               instructions(
                 genExprs,
                 Instruction.Call(fname.value),
-                Instruction.Mov(returnAddr.operand, Register.eax.operand)
-              ) -> RegisterAssignment.Memory(returnAddr)
+                load(returnAlloc, RegisterAssignment.Register(Register.eax))
+              ) -> returnAlloc
             case _ => ???
           }
+        case _ => ???
+      }
+
+    def load(target: RegisterAssignment, source: RegisterAssignment): Lines =
+      target match {
+        case RegisterAssignment.Memory(addr) => 
+          loadIntoAddress(addr, source)
+        case RegisterAssignment.Register(reg) => 
+          loadIntoRegister(reg, source)
         case _ => ???
       }
 
