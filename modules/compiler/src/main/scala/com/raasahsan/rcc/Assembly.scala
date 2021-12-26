@@ -112,7 +112,16 @@ object Assembly {
       )
     )
 
-  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines, A5: ToLines, A6: ToLines, A7: ToLines](
+  def instructions[
+      A0: ToLines,
+      A1: ToLines,
+      A2: ToLines,
+      A3: ToLines,
+      A4: ToLines,
+      A5: ToLines,
+      A6: ToLines,
+      A7: ToLines
+  ](
       a0: A0,
       a1: A1,
       a2: A2,
@@ -135,7 +144,17 @@ object Assembly {
       )
     )
 
-  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines, A5: ToLines, A6: ToLines, A7: ToLines, A8: ToLines](
+  def instructions[
+      A0: ToLines,
+      A1: ToLines,
+      A2: ToLines,
+      A3: ToLines,
+      A4: ToLines,
+      A5: ToLines,
+      A6: ToLines,
+      A7: ToLines,
+      A8: ToLines
+  ](
       a0: A0,
       a1: A1,
       a2: A2,
@@ -318,7 +337,7 @@ object Assembly {
         case Line.Directive(dir)     => renderDirective(dir)
         case Line.Label(label)       => s"${label.name}:"
         case Line.Instruction(instr) => s"    ${renderInstruction(instr)}"
-        case Line.Empty            => ""
+        case Line.Empty              => ""
       }
       .mkString("", "\n", "\n")
 

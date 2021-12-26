@@ -151,10 +151,11 @@ object Parser {
       .withContext("compoundStatement")
 
   def selectionStatement: P[SelectionStatement] =
-      (ifKeyword *> (leftParentheses *> (expression <* rightParentheses)) ~ P.defer(statement) ~ (elseKeyword *> P.defer(statement)).?).map { 
-        case ((condition, consequent), alternative) =>
-          SelectionStatement.If(condition, consequent, alternative)
-      }
+    (ifKeyword *> (leftParentheses *> (expression <* rightParentheses)) ~ P.defer(
+      statement
+    ) ~ (elseKeyword *> P.defer(statement)).?).map { case ((condition, consequent), alternative) =>
+      SelectionStatement.If(condition, consequent, alternative)
+    }
 
   def withParentheses[A](p: P[A]): P[A] =
     leftParentheses *> p <* rightParentheses
@@ -272,13 +273,13 @@ object Parser {
   // TODO: refine with other types of constants
   def integerConstant: P[Int] =
     decimalConstant.backtrack |
-    octalConstant
+      octalConstant
 
   def decimalConstant: P[Int] =
     (nonzeroDigit ~ digit.rep0).map { (h, t) =>
       (h :: t).mkString.toInt
     }
-    
+
   def octalConstant: P[Int] =
     zero.as(0)
 

@@ -1,5 +1,6 @@
 package com.raasahsan.rcc
 
+import cats.syntax.all._
 import cats.data.NonEmptyList
 
 object AST {
@@ -17,7 +18,9 @@ object AST {
       declarator: Declarator,
       declarationList: Option[DeclarationList],
       statements: CompoundStatement
-  )
+  ) {
+    def functionName: Option[Identifier] = declarator.functionName
+  }
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
 
@@ -100,7 +103,11 @@ object AST {
 
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
 
-  final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator)
+  final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
+    def identifier: Option[Identifier] = directDeclarator.identifier
+    def functionName: Option[Identifier] = directDeclarator.functionName
+    def functionParameters: Option[List[Identifier]] = directDeclarator.functionParameters
+  }
 
   final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
 
@@ -120,6 +127,33 @@ object AST {
     case Declarator(value: AST.Declarator)
     case FunctionDeclarator(decl: DirectDeclarator, parameterTypeList: ParameterTypeList)
     case Identifiers(decl: DirectDeclarator, identifiers: Option[IdentifierList])
+
+    def identifier: Option[AST.Identifier] =
+      this match {
+        case DirectDeclarator.Identifier(i) => Some(i)
+        case _                              => None
+      }
+
+    // TODO: This can probably be merged with functionParameters
+    def functionName: Option[AST.Identifier] =
+      this match {
+        case DirectDeclarator.FunctionDeclarator(decl, _) =>
+          decl.identifier
+        case DirectDeclarator.Identifiers(decl, _) =>
+          decl.identifier
+        case _ => None
+      }
+
+    def functionParameters: Option[List[AST.Identifier]] =
+      this match {
+        case FunctionDeclarator(_, params) =>
+          params.parameterList.parameters.toList.map {
+            case ParameterDeclaration.Declarator(_, decl) =>
+              decl.identifier.get
+          }.some
+        case Identifiers(_, None) => Some(Nil)
+        case _                    => None
+      }
   }
 
   final case class Identifier(value: String)

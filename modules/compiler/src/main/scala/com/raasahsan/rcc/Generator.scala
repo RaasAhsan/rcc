@@ -12,39 +12,8 @@ object Generator {
   val CallParameterRegisters =
     List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
 
-  def findDeclarations(statement: Statement): List[Declaration] =
-    statement match {
-      case Statement.Compound(compound) =>
-        val decls = compound.declarationList.map(_.declarations.toList).getOrElse(Nil)
-        val rest =
-          compound.statementList.map(_.statements.toList).getOrElse(Nil).flatMap(findDeclarations)
-        decls ++ rest
-      case _ => Nil
-    }
-
-  private def functionName(fd: FunctionDefinition): Option[Identifier] =
-    fd.declarator.directDeclarator match {
-      case DirectDeclarator.FunctionDeclarator(decl, _) =>
-        decl match {
-          case DirectDeclarator.Identifier(name) => Some(name)
-          case _                                 => None
-        }
-      case DirectDeclarator.Identifiers(decl, _) =>
-        decl match {
-          case DirectDeclarator.Identifier(name) => Some(name)
-          case _                                 => None
-        }
-      case _ => None
-    }
-
-  private def directDeclaratorIdentifier(dd: DirectDeclarator): Option[Identifier] =
-    dd match {
-      case DirectDeclarator.Identifier(id) => Some(id)
-      case _                               => None
-    }
-
   def generateFunctionDefinition(fd: FunctionDefinition): Lines = {
-    val name = functionName(fd).get
+    val name = fd.functionName.get
 
     // Perform register allocation and code generation at the same time
     // Three-address code makes this much simpler, and perhaps makes
@@ -59,15 +28,8 @@ object Generator {
       case Constant(value: Int)
     }
 
-    val arguments = (fd.declarator.directDeclarator match {
-      case DirectDeclarator.FunctionDeclarator(_, params) =>
-        params.parameterList.parameters.toList.map {
-          case ParameterDeclaration.Declarator(_, decl) =>
-            directDeclaratorIdentifier(decl.directDeclarator).get
-        }
-      case DirectDeclarator.Identifiers(_, None) => Nil
-      case _                                     => ???
-    }).zip(CallParameterRegisters)
+    val arguments = fd.declarator.functionParameters.get
+      .zip(CallParameterRegisters)
       .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
       .toMap
 
@@ -112,7 +74,7 @@ object Generator {
               .getOrElse(Nil)
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
-                  val ident = directDeclaratorIdentifier(initDecl.declarator.directDeclarator).get
+                  val ident = initDecl.declarator.identifier.get
                   val storage = allocateNamed(ident.value, 4)
                   initDecl.initializer
                     .map {
@@ -168,7 +130,7 @@ object Generator {
                     generateStatement(alternativeStmt),
                     Label(end)
                   )
-                case None => 
+                case None =>
                   val end = nextLabel()
                   instructions(
                     gen,

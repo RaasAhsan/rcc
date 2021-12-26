@@ -1,6 +1,5 @@
 .intel_syntax noprefix
 .text
-
 .global add
 add:
     push rbp
