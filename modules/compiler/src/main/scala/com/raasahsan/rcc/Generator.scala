@@ -275,7 +275,8 @@ object Generator {
     instructions(
       preamble,
       gen,
-      postamble
+      postamble,
+      Line.Empty
     )
   }
 

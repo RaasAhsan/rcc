@@ -27,7 +27,7 @@ object AST {
     case Labeled(stmt: LabeledStatement)
     case Compound(stmt: CompoundStatement)
     case Expression(stmt: ExpressionStatement)
-    case Selection()
+    case Selection(stmt: SelectionStatement)
     case Iteration()
     case Jump(stmt: JumpStatement)
   }
@@ -35,6 +35,10 @@ object AST {
   final case class ExpressionStatement(expr: Option[Expression])
 
   final case class LabeledStatement()
+
+  enum SelectionStatement {
+    case If(condition: Expression, consequent: Statement, alternative: Option[Statement])
+  }
 
   final case class CompoundStatement(
       declarationList: Option[DeclarationList],

@@ -133,7 +133,8 @@ object Parser {
   def statement: P[Statement] = (
     jumpStatement.map(Statement.Jump(_)).backtrack |
       expressionStatement.map(Statement.Expression(_)).backtrack |
-      compoundStatement.map(Statement.Compound(_))
+      compoundStatement.map(Statement.Compound(_)).backtrack |
+      selectionStatement.map(Statement.Selection(_))
   ).withContext("statement")
 
   def expressionStatement: P[ExpressionStatement] =
@@ -148,6 +149,12 @@ object Parser {
         CompoundStatement(declarations, statements)
       }
       .withContext("compoundStatement")
+
+  def selectionStatement: P[SelectionStatement] =
+      ((ifKeyword *> leftParentheses *> (expression <* rightParentheses)) ~ statement ~ (elseKeyword *> statement).?).map { 
+        case ((condition, consequent), alternative) =>
+          SelectionStatement.If(condition, consequent, alternative)
+      }
 
   def withParentheses[A](p: P[A]): P[A] =
     leftParentheses *> p <* rightParentheses
@@ -316,7 +323,8 @@ object Parser {
   def divide: P[Unit] = operator("/")
   def modulo: P[Unit] = operator("%")
 
-  def returnKeyword: P[Unit] =
-    keyword("return")
+  def returnKeyword: P[Unit] = keyword("return")
+  def ifKeyword: P[Unit] = keyword("if")
+  def elseKeyword: P[Unit] = keyword("else")
 
 }

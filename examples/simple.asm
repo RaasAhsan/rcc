@@ -16,6 +16,7 @@ add:
     mov rsp, rbp
     pop rbp
     ret
+
 .global main
 main:
     push rbp
@@ -36,3 +37,4 @@ main:
     mov rsp, rbp
     pop rbp
     ret
+

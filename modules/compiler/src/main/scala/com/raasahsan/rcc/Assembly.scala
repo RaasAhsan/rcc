@@ -61,6 +61,21 @@ object Assembly {
       )
     )
 
+  def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines](
+      a0: A0,
+      a1: A1,
+      a2: A2,
+      a3: A3
+  ): Lines =
+    Monoid.combineAll(
+      List(
+        implicitly[ToLines[A0]].lines(a0),
+        implicitly[ToLines[A1]].lines(a1),
+        implicitly[ToLines[A2]].lines(a2),
+        implicitly[ToLines[A3]].lines(a3)
+      )
+    )
+
   def instructions[A0: ToLines, A1: ToLines, A2: ToLines, A3: ToLines, A4: ToLines](
       a0: A0,
       a1: A1,
@@ -102,7 +117,7 @@ object Assembly {
     case Directive(value: Assembly.Directive)
     case Instruction(value: Assembly.Instruction)
     case Label(value: Assembly.Label)
-    case Newline
+    case Empty
   }
 
   enum Directive {
@@ -247,7 +262,7 @@ object Assembly {
         case Line.Directive(dir)     => renderDirective(dir)
         case Line.Label(label)       => s"${label.name}:"
         case Line.Instruction(instr) => s"    ${renderInstruction(instr)}"
-        case Line.Newline            => "\n"
+        case Line.Empty            => ""
       }
       .mkString("", "\n", "\n")
 
