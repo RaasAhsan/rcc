@@ -58,28 +58,10 @@ L2:
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 40
-    mov edi, 50
-    call putchar
+    sub rsp, 24
+    mov DWORD PTR [rbp - 12], LC1
+    mov eax, DWORD PTR [rbp - 12]
     mov DWORD PTR [rbp - 4], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 8], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 12], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 16], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 20], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 24], eax
-    mov edi, 50
-    call putchar
-    mov DWORD PTR [rbp - 28], eax
     mov eax, 3
     mov rsp, rbp
     pop rbp
@@ -88,3 +70,6 @@ main:
     pop rbp
     ret
 
+.data
+LC1:
+.string "hello world"

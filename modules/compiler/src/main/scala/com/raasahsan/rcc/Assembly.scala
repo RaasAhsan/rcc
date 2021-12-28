@@ -192,12 +192,14 @@ object Assembly {
     case Text
     case Data
     case IntelSyntax
+    case StringLiteral(value: String)
 
     def line: Line = Line.Directive(this)
   }
 
   final case class Label(name: String) {
     def line: Line = Line.Label(this)
+    def operand = Operand.Label(this)
   }
 
   // TODO: instruction type and list of operands is more useful perhaps?
@@ -265,6 +267,8 @@ object Assembly {
 
   sealed trait Operand
 
+  // addressing modes
+  // expression?
   object Operand {
     sealed trait Destination extends Operand
     sealed trait Source extends Operand
@@ -272,12 +276,14 @@ object Assembly {
     final case class Immediate(imm: Assembly.Immediate) extends Source
     final case class Register(reg: Assembly.Register) extends Source with Destination
     final case class Address(addr: Assembly.Address) extends Source with Destination
+    final case class Label(label: Assembly.Label) extends Source
   }
 
   final case class Immediate(value: Int) {
     def operand = Operand.Immediate(this)
   }
 
+  // effective addresses
   enum Address {
     case Direct(addr: Int)
     case Indirect(reg: Register)
@@ -292,6 +298,7 @@ object Assembly {
       case Operand.Immediate(imm) => s"${imm.value}"
       case Operand.Register(reg)  => s"${reg.name}"
       case Operand.Address(addr)  => s"DWORD PTR [${renderAddress(addr)}]"
+      case Operand.Label(label) => label.name
     }
 
   def renderAddress(address: Address): String =
@@ -310,6 +317,7 @@ object Assembly {
       case Directive.Text         => ".text"
       case Directive.Data         => ".data"
       case Directive.IntelSyntax  => ".intel_syntax noprefix"
+      case Directive.StringLiteral(value) => s".string \"$value\""
     }
 
   def renderInstruction(instr: Instruction): String = {

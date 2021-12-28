@@ -101,11 +101,8 @@ object Parser {
   ).withContext("directDeclarator")
 
   def pointer: P[Pointer] =
-    P.recursive { rec =>
-      (asterisk *> typeQualifierList.?.with1 ~ rec).map { case (qualifiers, pointer) =>
-        Pointer(qualifiers, Some(pointer))
-      } |
-        (asterisk *> typeQualifierList.?).map { qualifiers => Pointer(qualifiers, None) }
+    (asterisk *> typeQualifierList.?).rep.map { qualifiers =>
+      Pointer(qualifiers)
     }
 
   // TODO: fix
@@ -194,6 +191,7 @@ object Parser {
           }
         }
       }
+      .withContext("additiveExpression")
   }
 
   def multiplicativeExpression: P[Expression] = {
@@ -276,8 +274,7 @@ object Parser {
 
   // TODO: charset divergences between java and C?
   def sChar: P[Char] = 
-    P.anyChar.filter(c => c != '"' && c != '\n' && c != '\\') |
-      escapeSequence
+    P.anyChar.filter(c => c != '"' && c != '\n' && c != '\\').backtrack
 
   // TODO: implement character sequences
   def escapeSequence: P[Char] = P.fail

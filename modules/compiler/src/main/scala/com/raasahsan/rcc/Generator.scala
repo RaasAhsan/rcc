@@ -3,7 +3,7 @@ package com.raasahsan.rcc
 import scala.collection.mutable
 import cats.syntax.all._
 
-object Generator {
+class Generator {
 
   import Assembly._
   import AST._
@@ -12,6 +12,24 @@ object Generator {
   val CallParameterRegisters =
     List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
 
+  // Labels have function scope in C but global scope in assembly
+  var stringLabelIndex = 0
+  var functionLabelIndex = 0
+  var stringLiterals = mutable.Buffer[(Label, StringLiteral)]()
+
+  def addStringLiteral(literal: StringLiteral): Label = {
+    stringLabelIndex += 1
+    val label = Label(s"LC$stringLabelIndex")
+    stringLiterals += (label -> literal)
+    label
+  }
+
+  def nextFunctionLabelIndex(): String = {
+    functionLabelIndex += 1
+    s"L$functionLabelIndex"
+  }
+
+  // TODO: ReaderT[State[S, ?], SymbolTable, R]
   def generateFunctionDefinition(fd: FunctionDefinition): Lines = {
     val name = fd.functionName.get
 
@@ -25,6 +43,7 @@ object Generator {
     enum RegisterAssignment {
       case Memory(addr: Assembly.Address)
       case Register(reg: Assembly.Register)
+      case Label(label: Assembly.Label)
       case Constant(value: Int)
     }
 
@@ -35,13 +54,6 @@ object Generator {
 
     val symbols = new mutable.HashMap[String, RegisterAssignment]
     var stackOffset = 0
-    // Labels have function scope
-    var labelIndex = 0
-
-    def nextLabel(): String = {
-      labelIndex += 1
-      s"L$labelIndex"
-    }
 
     def allocateNamed(name: String, size: Int): RegisterAssignment = {
       val assign = allocate(size)
@@ -117,8 +129,8 @@ object Generator {
 
               alternative match {
                 case Some(alternativeStmt) =>
-                  val alt = nextLabel()
-                  val end = nextLabel()
+                  val alt = nextFunctionLabelIndex()
+                  val end = nextFunctionLabelIndex()
                   instructions(
                     gen,
                     loadIntoRegister(Register.eax, assign),
@@ -131,7 +143,7 @@ object Generator {
                     Label(end)
                   )
                 case None =>
-                  val end = nextLabel()
+                  val end = nextFunctionLabelIndex()
                   instructions(
                     gen,
                     loadIntoRegister(Register.eax, assign),
@@ -162,8 +174,14 @@ object Generator {
             case None =>
               get(ident.value)
           })
+        case Expression.StringLiteral(literal) =>
+          val label = addStringLiteral(literal)
+          val alloc = allocate(8) // TODO: pointer size constant
+          instructions(
+            load(alloc, RegisterAssignment.Label(label))
+          ) -> alloc
         case Expression.Assignment(lhs, rhs) =>
-          // TODO: Assert LHS is an l-value (identifier or array index) in the type system
+          // TODO: Assert LHS is a modifiable lvalue (identifier or array index) in the type system
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
           instructions(
@@ -238,6 +256,10 @@ object Generator {
           instructions(
             Instruction.Mov(addr.operand, srcReg.operand)
           )
+        case RegisterAssignment.Label(label) =>
+          instructions(
+            Instruction.Mov(addr.operand, label.operand)
+          )
       }
 
     def loadIntoRegister(reg: Register, assign: RegisterAssignment): Lines =
@@ -254,6 +276,7 @@ object Generator {
           instructions(
             Instruction.Mov(reg.operand, srcReg.operand)
           )
+        case _ => ???
       }
 
     val gen = generateStatement(Statement.Compound(fd.statements))
@@ -288,10 +311,19 @@ object Generator {
       case _                                          => Lines.empty
     }.combineAll
 
+    val genData = stringLiterals.toList.map { case (label, literal) =>
+      instructions(
+        label.line,
+        Directive.StringLiteral(literal.value)
+      )
+    }.combineAll
+
     instructions(
       Directive.IntelSyntax,
       Directive.Text,
-      genFunctions
+      genFunctions,
+      Directive.Data,
+      genData
     )
   }
 

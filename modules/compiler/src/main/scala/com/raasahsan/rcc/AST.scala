@@ -120,7 +120,7 @@ object AST {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: AST.Declarator)
   }
 
-  final case class Pointer(typeQualifiers: Option[TypeQualifierList], pointer: Option[Pointer])
+  final case class Pointer(typeQualifiers: NonEmptyList[Option[TypeQualifierList]])
 
   enum DirectDeclarator {
     case Identifier(value: AST.Identifier)

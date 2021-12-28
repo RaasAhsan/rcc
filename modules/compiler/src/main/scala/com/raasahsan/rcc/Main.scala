@@ -21,24 +21,20 @@ object Main {
       }
   
       int main() {
-        putchar(50);
-        putchar(50);
-        putchar(50);
-        putchar(50);
-        putchar(50);
-        putchar(50);
-        putchar(50);
+        char* x = "hello world";
         return 3;
       }
   
   """
 
   def main(args: Array[String]): Unit = {
+    println(program.substring(278))
     val result = Parser.parse(program)
     println(result)
 
     val p = result.toOption.get
-    val gen = Generator.generateTranslationUnit(p)
+    val generator = new Generator
+    val gen = generator.generateTranslationUnit(p)
     val render = Assembly.renderProgram(gen)
 
     val outDir = os.pwd / "examples"
