@@ -245,6 +245,7 @@ object Parser {
   def primaryExpression: P[Expression] =
     constant.map(Expression.Constant(_)) |
       identifier.map(Expression.Identifier(_)) |
+      stringLiteral.map(Expression.StringLiteral(_)) |
       withParentheses(P.defer(expression))
 
   def argumentExpressionList: P[ArgumentExpressionList] =
@@ -262,6 +263,24 @@ object Parser {
       operator("&=").as(AssignmentOperator.AndAssign) |
       operator("^=").as(AssignmentOperator.XorAssign) |
       operator("|=").as(AssignmentOperator.OrAssign)
+
+
+  // String literals
+  def stringLiteral: P[StringLiteral] =
+    (stringLiteralInit *> sCharSequence.? <* stringLiteralTerminator).map(cs => StringLiteral(cs.getOrElse("")))
+
+  def sCharSequence: P[String] =
+    (sChar ~ sChar.rep0).map((h, t) =>
+      (h :: t).mkString  
+    )
+
+  // TODO: charset divergences between java and C?
+  def sChar: P[Char] = 
+    P.anyChar.filter(c => c != '"' && c != '\n' && c != '\\') |
+      escapeSequence
+
+  // TODO: implement character sequences
+  def escapeSequence: P[Char] = P.fail
 
   // Lexical elements
   // all whitespace handling is performed at terminals
@@ -330,5 +349,8 @@ object Parser {
   def returnKeyword: P[Unit] = keyword("return")
   def ifKeyword: P[Unit] = keyword("if")
   def elseKeyword: P[Unit] = keyword("else")
+
+  def stringLiteralInit: P[Unit] = P.string("\"").void
+  def stringLiteralTerminator: P[Unit] = operator("\"").void
 
 }

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 int add(int x, int y) {
     return x + y;
 }
@@ -11,6 +13,11 @@ if (x) {
 }
 
 int main() {
-int z = foo(0);
-return z;
+    int z = foo(0);
+    int* p = &z;
+    char c = '3';
+    char* cp = &c;
+    int a = cp;
+    printf("%d\n", a);
+    return z;
 }

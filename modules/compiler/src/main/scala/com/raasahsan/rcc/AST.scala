@@ -170,6 +170,7 @@ object AST {
   enum Expression {
     case Constant(constant: AST.Constant)
     case Identifier(identifier: AST.Identifier)
+    case StringLiteral(literal: AST.StringLiteral)
     case Assignment(lhs: Expression, rhs: Expression)
     case Plus(lhs: Expression, rhs: Expression)
     case Minus(lhs: Expression, rhs: Expression)
@@ -197,5 +198,7 @@ object AST {
   enum Constant {
     case IntegerConstant(value: Int)
   }
+
+  final case class StringLiteral(value: String)
 
 }
