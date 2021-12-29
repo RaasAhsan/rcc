@@ -28,7 +28,7 @@ class Generator {
     functionLabelIndex += 1
     s"L$functionLabelIndex"
   }
-
+  
   // TODO: ReaderT[State[S, ?], SymbolTable, R]
   def generateFunctionDefinition(fd: FunctionDefinition): Lines = {
     val name = fd.functionName.get
@@ -64,6 +64,7 @@ class Generator {
               .getOrElse(Nil)
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
+
                   val ident = initDecl.declarator.identifier.get
                   val storage = frame.allocateNamed(ident.value, 4)
                   initDecl.initializer
@@ -300,6 +301,7 @@ class Generator {
       Directive.IntelSyntax,
       Directive.Text,
       genFunctions,
+      Line.Empty,
       Directive.Data,
       genData
     )
