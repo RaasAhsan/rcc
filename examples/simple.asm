@@ -58,10 +58,7 @@ L2:
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 24
-    mov DWORD PTR [rbp - 12], LC1
-    mov eax, DWORD PTR [rbp - 12]
-    mov DWORD PTR [rbp - 4], eax
+    sub rsp, 8
     mov eax, 3
     mov rsp, rbp
     pop rbp
@@ -71,5 +68,3 @@ main:
     ret
 
 .data
-LC1:
-.string "hello world"

@@ -298,7 +298,7 @@ object Assembly {
       case Operand.Immediate(imm) => s"${imm.value}"
       case Operand.Register(reg)  => s"${reg.name}"
       case Operand.Address(addr)  => s"DWORD PTR [${renderAddress(addr)}]"
-      case Operand.Label(label) => label.name
+      case Operand.Label(label)   => label.name
     }
 
   def renderAddress(address: Address): String =
@@ -313,10 +313,10 @@ object Assembly {
 
   def renderDirective(dir: Directive): String =
     dir match {
-      case Directive.Global(name) => s".global $name"
-      case Directive.Text         => ".text"
-      case Directive.Data         => ".data"
-      case Directive.IntelSyntax  => ".intel_syntax noprefix"
+      case Directive.Global(name)         => s".global $name"
+      case Directive.Text                 => ".text"
+      case Directive.Data                 => ".data"
+      case Directive.IntelSyntax          => ".intel_syntax noprefix"
       case Directive.StringLiteral(value) => s".string \"$value\""
     }
 

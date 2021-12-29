@@ -40,34 +40,12 @@ class Generator {
 
     // TODO: Offset newtype
 
-    enum RegisterAssignment {
-      case Memory(addr: Assembly.Address)
-      case Register(reg: Assembly.Register)
-      case Label(label: Assembly.Label)
-      case Constant(value: Int)
-    }
-
     val arguments = fd.declarator.functionParameters.get
       .zip(CallParameterRegisters)
       .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
       .toMap
 
-    val symbols = new mutable.HashMap[String, RegisterAssignment]
-    var stackOffset = 0
-
-    def allocateNamed(name: String, size: Int): RegisterAssignment = {
-      val assign = allocate(size)
-      symbols.put(name, assign)
-      assign
-    }
-
-    def allocate(size: Int): RegisterAssignment = {
-      stackOffset += size
-      RegisterAssignment.Memory(Address.IndirectDisplacement(Register.rbp, -stackOffset))
-    }
-
-    def get(name: String): RegisterAssignment =
-      symbols.get(name).get
+    val frame = new StackFrame
 
     def postamble = instructions(
       Instruction.Mov(Register.rsp.operand, Register.rbp.operand),
@@ -87,7 +65,7 @@ class Generator {
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
                   val ident = initDecl.declarator.identifier.get
-                  val storage = allocateNamed(ident.value, 4)
+                  val storage = frame.allocateNamed(ident.value, 4)
                   initDecl.initializer
                     .map {
                       case Initializer.Expression(expr) =>
@@ -172,11 +150,11 @@ class Generator {
             case Some(assign) =>
               assign
             case None =>
-              get(ident.value)
+              frame.get(ident.value)
           })
         case Expression.StringLiteral(literal) =>
           val label = addStringLiteral(literal)
-          val alloc = allocate(8) // TODO: pointer size constant
+          val alloc = frame.allocate(8) // TODO: pointer size constant
           instructions(
             load(alloc, RegisterAssignment.Label(label))
           ) -> alloc
@@ -193,7 +171,7 @@ class Generator {
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val resultAlloc = allocate(4)
+          val resultAlloc = frame.allocate(4)
           instructions(
             genL,
             genR,
@@ -206,7 +184,7 @@ class Generator {
           fexpr match {
             case Expression.Identifier(fname) =>
               val args = fargs.map(_.args.toList).getOrElse(Nil)
-              val returnAlloc = allocate(4)
+              val returnAlloc = frame.allocate(4)
 
               // TODO: more than 6 args will require changes to how we calculate stack offsets
               // and perform 16-byte rsp alignment
@@ -229,6 +207,9 @@ class Generator {
               ) -> returnAlloc
             case _ => ???
           }
+        case Expression.Dereference(expr) =>
+          val (gen, assign) = generateExpression(expr)
+          ???
         case _ => ???
       }
 
@@ -281,16 +262,13 @@ class Generator {
 
     val gen = generateStatement(Statement.Compound(fd.statements))
 
-    // TODO: rsp is 64-bit but we're using 32-bit values for now
-    val alignedStackOffset = ((stackOffset + 8) & 0xfffffff0) + 8
-
     // TODO: maybe we can label it and jump?
     val preamble = instructions(
       Directive.Global(name.value),
       Label(name.value),
       Instruction.Push(Register.rbp.operand), // push 8 bytes
       Instruction.Mov(Register.rbp.operand, Register.rsp.operand),
-      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(alignedStackOffset)))
+      Instruction.Sub(Register.rsp.operand, Operand.Immediate(Immediate(frame.alignedStackOffset)))
     )
 
     // TODO: the postamble here can be dead code

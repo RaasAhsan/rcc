@@ -206,12 +206,31 @@ object Parser {
     def op: P[Op] =
       star.as(Star) | divide.as(Divide) | modulo.as(Modulo)
 
-    (postfixExpression ~ (op ~ postfixExpression).rep0).map { (h, t) =>
+    (unaryExpression ~ (op ~ unaryExpression).rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, (op, expr)) =>
         op match {
           case Star   => Expression.Times(acc, expr)
           case Divide => Expression.Divide(acc, expr)
           case Modulo => Expression.Modulo(acc, expr)
+        }
+      }
+    }
+  }
+
+  def unaryExpression: P[Expression] = {
+    enum Op {
+      case Dereference
+    }
+
+    import Op._
+
+    def op: P[Op] =
+      star.as(Dereference)
+
+    (op.rep0.with1 ~ postfixExpression).map { (ops, expr) =>
+      ops.reverse.foldLeft(expr) { case (acc, op) =>
+        op match {
+          case Dereference => Expression.Dereference(expr)
         }
       }
     }
@@ -262,18 +281,17 @@ object Parser {
       operator("^=").as(AssignmentOperator.XorAssign) |
       operator("|=").as(AssignmentOperator.OrAssign)
 
-
   // String literals
   def stringLiteral: P[StringLiteral] =
-    (stringLiteralInit *> sCharSequence.? <* stringLiteralTerminator).map(cs => StringLiteral(cs.getOrElse("")))
-
-  def sCharSequence: P[String] =
-    (sChar ~ sChar.rep0).map((h, t) =>
-      (h :: t).mkString  
+    (stringLiteralInit *> sCharSequence.? <* stringLiteralTerminator).map(cs =>
+      StringLiteral(cs.getOrElse(""))
     )
 
+  def sCharSequence: P[String] =
+    (sChar ~ sChar.rep0).map((h, t) => (h :: t).mkString)
+
   // TODO: charset divergences between java and C?
-  def sChar: P[Char] = 
+  def sChar: P[Char] =
     P.anyChar.filter(c => c != '"' && c != '\n' && c != '\\').backtrack
 
   // TODO: implement character sequences

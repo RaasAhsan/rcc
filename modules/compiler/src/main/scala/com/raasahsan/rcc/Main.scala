@@ -21,7 +21,6 @@ object Main {
       }
   
       int main() {
-        char* x = "hello world";
         return 3;
       }
   

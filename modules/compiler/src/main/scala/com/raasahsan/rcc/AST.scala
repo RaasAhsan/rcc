@@ -179,6 +179,7 @@ object AST {
     case Modulo(lhs: Expression, rhs: Expression)
     case FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
     case ArrayGet(lhs: Expression, index: Expression)
+    case Dereference(op: Expression)
   }
 
   enum AssignmentOperator {
