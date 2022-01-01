@@ -34,7 +34,7 @@ object Main {
     val p = result.toOption.get
     val typed = Typer.typeCheck(p)
     println(typed)
-    
+
     val generator = new Generator
     val gen = generator.generateTranslationUnit(p)
     val render = Assembly.renderProgram(gen)

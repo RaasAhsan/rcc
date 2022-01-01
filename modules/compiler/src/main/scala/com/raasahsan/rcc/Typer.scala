@@ -11,14 +11,17 @@ object Typer {
 
   def typeCheck(unit: TranslationUnit): Either[String, TypingContext] =
     unit.externalDeclarations.toList
-      .collect {
-        case ExternalDeclaration.FunctionDefinition(fd) => fd
+      .collect { case ExternalDeclaration.FunctionDefinition(fd) =>
+        fd
       }
       .foldLeftM(Map[Identifier, Type]()) { case (ctx, fd) =>
-        typeCheckFunctionDefinition(fd, ctx)  
+        typeCheckFunctionDefinition(fd, ctx)
       }
 
-  def typeCheckFunctionDefinition(fd: FunctionDefinition, ctx: Map[Identifier, Type]): Either[String, TypingContext] =
+  def typeCheckFunctionDefinition(
+      fd: FunctionDefinition,
+      ctx: Map[Identifier, Type]
+  ): Either[String, TypingContext] =
     for {
       baseReturnTpe <- fd.specifiers.flatMap(specifiersToType).fold(Left("no type found"))(Right(_))
       returnTpe = typePointer(baseReturnTpe, fd.declarator.pointer)
@@ -26,20 +29,30 @@ object Typer {
       ident <- fd.functionName.fold(Left("no function name"))(Right(_))
       params <- fd.functionParameters.fold(Left("no function parameters"))(Right(_))
       argTpes <- params.traverse { case (ident, specifiers) =>
-        specifiersToType(specifiers).map(tpe => ident -> tpe).fold(Left("no argument type found"))(Right(_))
+        specifiersToType(specifiers)
+          .map(tpe => ident -> tpe)
+          .fold(Left("no argument type found"))(Right(_))
       }
       innerCtx1 = ctx ++ argTpes.toMap
-      innerCtx2 <- fd.declarationList.fold(Right(innerCtx1))(decls => typeCheckDeclarations(decls, innerCtx1))
+      innerCtx2 <- fd.declarationList.fold(Right(innerCtx1))(decls =>
+        typeCheckDeclarations(decls, innerCtx1)
+      )
       _ <- typeCheckStatement(Statement.Compound(fd.statements), innerCtx2)
     } yield ctx + (ident -> Type.Function(argTpes.map(_._2), returnTpe))
 
-  def typeCheckDeclarations(decls: DeclarationList, ctx: Map[Identifier, Type]): Either[String, TypingContext] =
+  def typeCheckDeclarations(
+      decls: DeclarationList,
+      ctx: Map[Identifier, Type]
+  ): Either[String, TypingContext] =
     decls.declarations.toList.foldLeftM(ctx) { (acc, decl) =>
       typeCheckDeclaration(decl, acc)
     }
 
   // TODO: Option is just nice for composability
-  def typeCheckStatements(stmts: StatementList, ctx: Map[Identifier, Type]): Either[String, TypingContext] =
+  def typeCheckStatements(
+      stmts: StatementList,
+      ctx: Map[Identifier, Type]
+  ): Either[String, TypingContext] =
     stmts.statements.toList.foldLeftM(ctx) { (acc, stmt) =>
       typeCheckStatement(stmt, acc)
     }
@@ -50,54 +63,59 @@ object Typer {
   )
 
   def specifiersToType(specifiers: DeclarationSpecifiers): Option[Type] = {
-    val key = specifiers.specifiers.toList
-      .collect {
-        case DeclarationSpecifier.TypeSpecifier(ts) => ts
-      }
-      .toSet
+    val key = specifiers.specifiers.toList.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>
+      ts
+    }.toSet
     specifierMapping.get(key)
   }
 
-  def typePointer(tpe: Type, pointer: Option[Pointer]): Type = 
+  def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
     pointer.fold(tpe)(_ => Type.Pointer(tpe))
 
   // TODO: this only works for block-level declarations, not functions?
   def typeCheckDeclaration(decl: Declaration, ctx: TypingContext): Either[String, TypingContext] =
     for {
-      baseTpe <- specifiersToType(decl.specifiers).fold(Left("no type found via specifiers"))(Right(_))
-      nextCtx <- decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).foldLeftM(ctx) { (acc, init) =>
-        val tpe = init.declarator.pointer.map(_ => Type.Pointer(baseTpe)).getOrElse(baseTpe)
-        // TODO: a declaration declares an identifier at most ONCE
-        init.declarator.identifier
-          .fold(Left("no identifier found in declarator"))(Right(_))
-          .map { ident =>
-            acc + (ident -> tpe)  
-          }
+      baseTpe <- specifiersToType(decl.specifiers).fold(Left("no type found via specifiers"))(
+        Right(_)
+      )
+      nextCtx <- decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).foldLeftM(ctx) {
+        (acc, init) =>
+          val tpe = init.declarator.pointer.map(_ => Type.Pointer(baseTpe)).getOrElse(baseTpe)
+          // TODO: a declaration declares an identifier at most ONCE
+          init.declarator.identifier
+            .fold(Left("no identifier found in declarator"))(Right(_))
+            .map { ident =>
+              acc + (ident -> tpe)
+            }
       }
     } yield nextCtx
-  
+
   def typeCheckStatement(stmt: Statement, ctx: TypingContext): Either[String, TypingContext] =
     stmt match {
-      case Statement.Compound(compound) => 
+      case Statement.Compound(compound) =>
         for {
-          ctx1 <- compound.declarationList.fold(Right(ctx)) { decls => typeCheckDeclarations(decls, ctx) }
-          _ <- compound.statementList.fold(Right(ctx1)) { statements => typeCheckStatements(statements, ctx1) }
+          ctx1 <- compound.declarationList.fold(Right(ctx)) { decls =>
+            typeCheckDeclarations(decls, ctx)
+          }
+          _ <- compound.statementList.fold(Right(ctx1)) { statements =>
+            typeCheckStatements(statements, ctx1)
+          }
         } yield ctx
       case Statement.Expression(expr) =>
         expr.expr match {
           case Some(e) => typeCheckExpression(e, ctx).as(ctx)
-          case None => Right(ctx)
+          case None    => Right(ctx)
         }
       case Statement.Selection(select) =>
         select match {
-          case SelectionStatement.If(cond, con, alt) => 
+          case SelectionStatement.If(cond, con, alt) =>
             for {
               ct <- typeCheckExpression(cond, ctx)
               _ <- if (ct == Type.Int) Right(()) else Left("if type boolean expected")
               _ <- typeCheckStatement(con, ctx)
               _ <- alt match {
                 case Some(stmt) => typeCheckStatement(stmt, ctx)
-                case None => Right(())
+                case None       => Right(())
               }
             } yield ctx
         }
@@ -107,7 +125,7 @@ object Typer {
             // TODO: match return type of function with type here
             val res = ret match {
               case Some(expr) => typeCheckExpression(expr, ctx)
-              case None => Right(Type.Void)
+              case None       => Right(Type.Void)
             }
             res.as(ctx)
           case _ => ???
@@ -128,7 +146,9 @@ object Typer {
           lt <- typeCheckExpression(l, ctx)
           rt <- typeCheckExpression(r, ctx)
           // TODO: + is valid for all arithmetic types
-          _ <- if (lt == rt && rt == Type.Int) Right(()) else Left("Expected int on both sides of plus")
+          _ <-
+            if (lt == rt && rt == Type.Int) Right(())
+            else Left("Expected int on both sides of plus")
         } yield lt
       case Expression.Identifier(ident) =>
         ctx.get(ident).fold(Left(s"identifier $ident not found"))(Right(_))

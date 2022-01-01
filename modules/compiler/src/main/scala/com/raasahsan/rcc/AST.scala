@@ -20,7 +20,8 @@ object AST {
       statements: CompoundStatement
   ) {
     def functionName: Option[Identifier] = declarator.functionName
-    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] = declarator.functionParameters
+    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
+      declarator.functionParameters
   }
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
@@ -107,7 +108,8 @@ object AST {
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
     def identifier: Option[Identifier] = directDeclarator.identifier
     def functionName: Option[Identifier] = directDeclarator.functionName
-    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] = directDeclarator.functionParameters
+    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
+      directDeclarator.functionParameters
   }
 
   final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
@@ -191,7 +193,8 @@ object AST {
     final case class Times(lhs: Expression, rhs: Expression) extends Expression
     final case class Divide(lhs: Expression, rhs: Expression) extends Expression
     final case class Modulo(lhs: Expression, rhs: Expression) extends Expression
-    final case class FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList]) extends Expression
+    final case class FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
+        extends Expression
     final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
   }

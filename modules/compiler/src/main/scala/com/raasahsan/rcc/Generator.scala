@@ -28,7 +28,7 @@ class Generator {
     functionLabelIndex += 1
     s"L$functionLabelIndex"
   }
-  
+
   // TODO: ReaderT[State[S, ?], SymbolTable, R]
   def generateFunctionDefinition(fd: FunctionDefinition): Lines = {
     val name = fd.functionName.get
