@@ -40,7 +40,9 @@ class Generator {
 
     // TODO: Offset newtype
 
-    val arguments = fd.declarator.functionParameters.get
+    val arguments = fd.declarator.functionParameters
+      .map(_.map(_._1))
+      .get
       .zip(CallParameterRegisters)
       .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
       .toMap

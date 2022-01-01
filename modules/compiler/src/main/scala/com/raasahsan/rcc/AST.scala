@@ -20,6 +20,7 @@ object AST {
       statements: CompoundStatement
   ) {
     def functionName: Option[Identifier] = declarator.functionName
+    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] = declarator.functionParameters
   }
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
@@ -106,7 +107,7 @@ object AST {
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
     def identifier: Option[Identifier] = directDeclarator.identifier
     def functionName: Option[Identifier] = directDeclarator.functionName
-    def functionParameters: Option[List[Identifier]] = directDeclarator.functionParameters
+    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] = directDeclarator.functionParameters
   }
 
   final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
@@ -144,12 +145,12 @@ object AST {
         case _ => None
       }
 
-    def functionParameters: Option[List[AST.Identifier]] =
+    def functionParameters: Option[List[(AST.Identifier, DeclarationSpecifiers)]] =
       this match {
         case FunctionDeclarator(_, params) =>
           params.parameterList.parameters.toList.map {
-            case ParameterDeclaration.Declarator(_, decl) =>
-              decl.identifier.get
+            case ParameterDeclaration.Declarator(specs, decl) =>
+              decl.identifier.get -> specs
           }.some
         case Identifiers(_, None) => Some(Nil)
         case _                    => None
@@ -167,19 +168,32 @@ object AST {
 
   final case class ArgumentExpressionList(args: NonEmptyList[Expression])
 
-  enum Expression {
-    case Constant(constant: AST.Constant)
-    case Identifier(identifier: AST.Identifier)
-    case StringLiteral(literal: AST.StringLiteral)
-    case Assignment(lhs: Expression, rhs: Expression)
-    case Plus(lhs: Expression, rhs: Expression)
-    case Minus(lhs: Expression, rhs: Expression)
-    case Times(lhs: Expression, rhs: Expression)
-    case Divide(lhs: Expression, rhs: Expression)
-    case Modulo(lhs: Expression, rhs: Expression)
-    case FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
-    case ArrayGet(lhs: Expression, index: Expression)
-    case Dereference(op: Expression)
+  // TODO: eliminate this mutability in the future
+  // limitations: impure, we may forget to attribute a type
+  // ill-typed tree may yield a partially typed tree
+  // ideas:
+  // 1. duplicate tree AST with explicit typed expressions (guarantees type by construction)
+  // 2. Cofree for metadata
+  // 3. F[_] for metadata
+  trait Typable {
+    var tpe: Option[Type] = None
+  }
+
+  sealed trait Expression extends Typable
+
+  object Expression {
+    final case class Constant(constant: AST.Constant) extends Expression
+    final case class Identifier(identifier: AST.Identifier) extends Expression
+    final case class StringLiteral(literal: AST.StringLiteral) extends Expression
+    final case class Assignment(lhs: Expression, rhs: Expression) extends Expression
+    final case class Plus(lhs: Expression, rhs: Expression) extends Expression
+    final case class Minus(lhs: Expression, rhs: Expression) extends Expression
+    final case class Times(lhs: Expression, rhs: Expression) extends Expression
+    final case class Divide(lhs: Expression, rhs: Expression) extends Expression
+    final case class Modulo(lhs: Expression, rhs: Expression) extends Expression
+    final case class FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList]) extends Expression
+    final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
+    final case class Dereference(op: Expression) extends Expression
   }
 
   enum AssignmentOperator {
