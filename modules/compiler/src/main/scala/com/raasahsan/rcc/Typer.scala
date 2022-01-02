@@ -82,11 +82,17 @@ object Typer {
         (acc, init) =>
           val tpe = init.declarator.pointer.map(_ => Type.Pointer(baseTpe)).getOrElse(baseTpe)
           // TODO: a declaration declares an identifier at most ONCE
-          init.declarator.identifier
-            .fold(Left("no identifier found in declarator"))(Right(_))
-            .map { ident =>
-              acc + (ident -> tpe)
+          for {
+            ident <- init.declarator.identifier.fold(Left("no identifier found in declarator"))(Right(_))
+            // TODO: some combinator that only validates when a value is present
+            _ <- init.initializer match {
+              case Some(Initializer.Expression(expr)) => 
+                typeCheckExpression(expr, ctx).flatMap { itpe =>
+                  if (itpe == tpe) Right(()) else Left("Initializer types did not match")
+                }
+              case _ => Right(())
             }
+          } yield acc + (ident -> tpe)
       }
     } yield nextCtx
 

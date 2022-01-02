@@ -221,11 +221,47 @@ object Assembly {
     def line: Line = Line.Instruction(this)
   }
 
+  enum DataSize(val size: Int) {
+    case Byte extends DataSize(1)
+    case Word extends DataSize(2)
+    case Dword extends DataSize(4)
+    case Qword extends DataSize(8)
+  }
+
+  enum PointerSize(name: String) {
+    case Byte extends PointerSize("BYTE PTR")
+    case Word extends PointerSize("WORD PTR")
+    case Dword extends PointerSize("DWORD PTR")
+    case Qword extends PointerSize("QOWRD PTR")
+  }
+
   final case class Register(name: String) {
     val operand = Operand.Register(this)
   }
 
   object Register {
+    // TODO: type constraints
+    def apply(index: Int, size: DataSize): Option[Register] =
+      if (index >= 0 && index <= 7) {
+        val bases = List("ax", "cx", "dx", "bx", "sp", "bp", "si", "bi")
+        val prefix = size match {
+          case DataSize.Dword => "e"
+          case DataSize.Qword => "r"
+          case _ => ???
+        }
+        Some(Register(prefix + bases(index)))
+      } else if (index <= 15) {
+        val base = s"r$index"
+        val suffix = size match {
+          case DataSize.Dword => "d"
+          case DataSize.Qword => ""
+          case _ => ???
+        }
+        Some(Register(base + suffix))
+      } else {
+        None
+      }
+
     val r0 = Register("r0")
     val r1 = Register("r1")
     val r2 = Register("r2")
@@ -276,6 +312,7 @@ object Assembly {
     final case class Immediate(imm: Assembly.Immediate) extends Source
     final case class Register(reg: Assembly.Register) extends Source with Destination
     final case class Address(addr: Assembly.Address) extends Source with Destination
+    final case class SizedAddress(addr: Assembly.Address, size: PointerSize) extends Source with Destination
     final case class Label(label: Assembly.Label) extends Source
   }
 
@@ -291,6 +328,7 @@ object Assembly {
     case IndirectDisplacementScaled(reg: Register, disp: Int, index: Register, scale: Int)
 
     def operand = Operand.Address(this)
+    def sizedOperand(size: PointerSize) = Operand.SizedAddress(this, size)
   }
 
   def renderOperand(operand: Operand): String =

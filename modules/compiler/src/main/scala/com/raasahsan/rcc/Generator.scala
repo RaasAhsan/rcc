@@ -66,16 +66,18 @@ class Generator {
               .getOrElse(Nil)
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
-
                   val ident = initDecl.declarator.identifier.get
-                  val storage = frame.allocateNamed(ident.value, 4)
+                  val size = initDecl.initializer.collect {
+                    case Initializer.Expression(e) => e.tpe
+                  }.flatten.get.dataSize
+                  val storage = frame.allocateNamed(ident.value, size)
                   initDecl.initializer
                     .map {
                       case Initializer.Expression(expr) =>
                         val (gen, assign) = generateExpression(expr)
                         instructions(
                           gen,
-                          load(storage, assign)
+                          load(storage.assignment, assign)
                         )
                       case _ => ???
                     }
@@ -153,14 +155,16 @@ class Generator {
             case Some(assign) =>
               assign
             case None =>
-              frame.get(ident.value)
+              frame.get(ident.value).assignment
           })
         case Expression.StringLiteral(literal) =>
           val label = addStringLiteral(literal)
-          val alloc = frame.allocate(8) // TODO: pointer size constant
+          val alloc = frame.allocate(DataSize.Qword) // TODO: pointer size constant
+          // TODO: sized allocations?
           instructions(
-            load(alloc, RegisterAssignment.Label(label))
-          ) -> alloc
+            loadIntoRegister(Register.rax, RegisterAssignment.Label(label)),
+            load(alloc.assignment, RegisterAssignment.Register(Register.rax))
+          ) -> alloc.assignment
         case Expression.Assignment(lhs, rhs) =>
           // TODO: Assert LHS is a modifiable lvalue (identifier or array index) in the type system
           val (genL, assignL) = generateExpression(lhs)
@@ -170,24 +174,27 @@ class Generator {
             genR,
             load(assignL, assignR)
           ) -> assignL
-        case Expression.Plus(lhs, rhs) =>
+        case e @ Expression.Plus(lhs, rhs) =>
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val resultAlloc = frame.allocate(4)
+          val resultAlloc = frame.allocate(e.tpe.map(_.dataSize).get)
           instructions(
             genL,
             genR,
             loadIntoRegister(Register.eax, assignL),
             loadIntoRegister(Register.edx, assignR),
             Instruction.Add(Register.eax.operand, Register.edx.operand),
-            load(resultAlloc, RegisterAssignment.Register(Register.eax))
-          ) -> resultAlloc
+            load(resultAlloc.assignment, RegisterAssignment.Register(Register.eax))
+          ) -> resultAlloc.assignment
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
             case Expression.Identifier(fname) =>
               val args = fargs.map(_.args.toList).getOrElse(Nil)
-              val returnAlloc = frame.allocate(4)
+              val returnSize = fexpr.tpe.collect {
+                case Type.Function(args, ret) => ret.dataSize
+              }.get
+              val returnAlloc = frame.allocate(returnSize)
 
               // TODO: more than 6 args will require changes to how we calculate stack offsets
               // and perform 16-byte rsp alignment
@@ -206,8 +213,8 @@ class Generator {
               instructions(
                 genExprs,
                 Instruction.Call(fname.value),
-                load(returnAlloc, RegisterAssignment.Register(Register.eax))
-              ) -> returnAlloc
+                load(returnAlloc.assignment, RegisterAssignment.Register(Register.eax))
+              ) -> returnAlloc.assignment
             case _ => ???
           }
         case Expression.Dereference(expr) =>
@@ -260,7 +267,10 @@ class Generator {
           instructions(
             Instruction.Mov(reg.operand, srcReg.operand)
           )
-        case _ => ???
+        case RegisterAssignment.Label(label) =>
+          instructions(
+            Instruction.Mov(reg.operand, label.operand)
+          )
       }
 
     val gen = generateStatement(Statement.Compound(fd.statements))

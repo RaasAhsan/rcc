@@ -1,5 +1,7 @@
 package com.raasahsan.rcc
 
+import Assembly._
+
 // TODO: struct, union, typedef / user-defined types?
 enum Type {
   case Char
@@ -25,5 +27,19 @@ enum Type {
       case Array(_)       => 8
       case Pointer(_)     => 8
       case Function(_, _) => 8
+    }
+
+  def dataSize: DataSize =
+    this match {
+      case Char           => DataSize.Byte
+      case Short          => DataSize.Word
+      case Int            => DataSize.Dword
+      case Long           => DataSize.Qword
+      case Float          => DataSize.Dword
+      case Double         => DataSize.Dword
+      case Void           => ???
+      case Array(_)       => DataSize.Qword
+      case Pointer(_)     => DataSize.Qword
+      case Function(_, _) => DataSize.Qword
     }
 }
