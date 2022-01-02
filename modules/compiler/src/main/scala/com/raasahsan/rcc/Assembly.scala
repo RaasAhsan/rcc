@@ -221,11 +221,11 @@ object Assembly {
     def line: Line = Line.Instruction(this)
   }
 
-  enum DataSize(val size: Int) {
-    case Byte extends DataSize(1)
-    case Word extends DataSize(2)
-    case Dword extends DataSize(4)
-    case Qword extends DataSize(8)
+  enum DataSize(val size: Int, val directive: String) {
+    case Byte extends DataSize(1, "BYTE PTR")
+    case Word extends DataSize(2, "WORD PTR")
+    case Dword extends DataSize(4, "DWORD PTR")
+    case Qword extends DataSize(8, "QWORD PTR")
   }
 
   enum PointerSize(name: String) {
@@ -241,7 +241,7 @@ object Assembly {
 
   object Register {
     // TODO: type constraints
-    def apply(index: Int, size: DataSize): Option[Register] =
+    def sized(index: Int, size: DataSize): Option[Register] =
       if (index >= 0 && index <= 7) {
         val bases = List("ax", "cx", "dx", "bx", "sp", "bp", "si", "bi")
         val prefix = size match {
@@ -312,7 +312,7 @@ object Assembly {
     final case class Immediate(imm: Assembly.Immediate) extends Source
     final case class Register(reg: Assembly.Register) extends Source with Destination
     final case class Address(addr: Assembly.Address) extends Source with Destination
-    final case class SizedAddress(addr: Assembly.Address, size: PointerSize) extends Source with Destination
+    final case class SizedAddress(addr: Assembly.SizedAddress) extends Source with Destination
     final case class Label(label: Assembly.Label) extends Source
   }
 
@@ -328,14 +328,18 @@ object Assembly {
     case IndirectDisplacementScaled(reg: Register, disp: Int, index: Register, scale: Int)
 
     def operand = Operand.Address(this)
-    def sizedOperand(size: PointerSize) = Operand.SizedAddress(this, size)
+  }
+
+  final case class SizedAddress(address: Address, size: DataSize) {
+    def operand = Operand.SizedAddress(this)
   }
 
   def renderOperand(operand: Operand): String =
     operand match {
       case Operand.Immediate(imm) => s"${imm.value}"
       case Operand.Register(reg)  => s"${reg.name}"
-      case Operand.Address(addr)  => s"DWORD PTR [${renderAddress(addr)}]"
+      case Operand.Address(addr)  => s"[${renderAddress(addr)}]"
+      case Operand.SizedAddress(addr) => s"${addr.size.directive} [${renderAddress(addr.address)}]"
       case Operand.Label(label)   => label.name
     }
 

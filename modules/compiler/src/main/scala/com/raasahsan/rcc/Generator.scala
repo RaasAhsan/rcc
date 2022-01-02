@@ -100,7 +100,13 @@ class Generator {
             case JumpStatement.Return(expr) =>
               val gen = expr
                 .map(generateExpression)
-                .map((gen, assign) => gen |+| loadIntoRegister(Register.eax, assign))
+                .map { (gen, assign) => 
+                  expr match {
+                    case Some(e) => 
+                      gen |+| loadIntoRegister(Register.sized(0, e.tpe.get.dataSize).get, assign)
+                    case None => gen
+                  }
+                }
                 .getOrElse(Lines.empty)
               gen |+| postamble
             case _ => ???
@@ -178,14 +184,15 @@ class Generator {
           // TODO: helper function to load assigned register into somewhere
           val (genL, assignL) = generateExpression(lhs)
           val (genR, assignR) = generateExpression(rhs)
-          val resultAlloc = frame.allocate(e.tpe.map(_.dataSize).get)
+          val size = e.tpe.map(_.dataSize).get
+          val resultAlloc = frame.allocate(size)
           instructions(
             genL,
             genR,
-            loadIntoRegister(Register.eax, assignL),
-            loadIntoRegister(Register.edx, assignR),
-            Instruction.Add(Register.eax.operand, Register.edx.operand),
-            load(resultAlloc.assignment, RegisterAssignment.Register(Register.eax))
+            loadIntoRegister(Register.sized(0, size).get, assignL),
+            loadIntoRegister(Register.sized(2, size).get, assignR),
+            Instruction.Add(Register.sized(0, size).get.operand, Register.sized(2, size).get.operand),
+            load(resultAlloc.assignment, RegisterAssignment.Register(Register.sized(0, size).get))
           ) -> resultAlloc.assignment
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
@@ -213,7 +220,7 @@ class Generator {
               instructions(
                 genExprs,
                 Instruction.Call(fname.value),
-                load(returnAlloc.assignment, RegisterAssignment.Register(Register.eax))
+                load(returnAlloc.assignment, RegisterAssignment.Register(Register.sized(0, returnSize).get))
               ) -> returnAlloc.assignment
             case _ => ???
           }
@@ -226,7 +233,7 @@ class Generator {
     def load(target: RegisterAssignment, source: RegisterAssignment): Lines =
       target match {
         case RegisterAssignment.Memory(addr) =>
-          loadIntoAddress(addr, source)
+          loadIntoAddress(addr.address, source)
         case RegisterAssignment.Register(reg) =>
           loadIntoRegister(reg, source)
         case _ => ???
@@ -240,8 +247,8 @@ class Generator {
           )
         case RegisterAssignment.Memory(assignAddr) =>
           instructions(
-            Instruction.Mov(Register.eax.operand, assignAddr.operand),
-            Instruction.Mov(addr.operand, Register.eax.operand)
+            Instruction.Mov(Register.sized(0, assignAddr.size).get.operand, assignAddr.operand),
+            Instruction.Mov(addr.operand, Register.sized(0, assignAddr.size).get.operand)
           )
         case RegisterAssignment.Register(srcReg) =>
           instructions(

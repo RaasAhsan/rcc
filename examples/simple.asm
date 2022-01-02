@@ -8,7 +8,7 @@ add:
     mov eax, edi
     mov edx, esi
     add eax, edx
-    mov DWORD PTR [rbp - 4], eax
+    mov [rbp - 4], eax
     mov eax, DWORD PTR [rbp - 4]
     mov rsp, rbp
     pop rbp
@@ -34,7 +34,7 @@ L1:
     mov eax, edi
     mov edx, 1
     add eax, edx
-    mov DWORD PTR [rbp - 4], eax
+    mov [rbp - 4], eax
     mov eax, DWORD PTR [rbp - 4]
     cmp eax, 0
     je L3
@@ -60,9 +60,9 @@ main:
     mov rbp, rsp
     sub rsp, 24
     mov rax, LC1
-    mov DWORD PTR [rbp - 16], rax
-    mov eax, DWORD PTR [rbp - 16]
-    mov DWORD PTR [rbp - 8], eax
+    mov [rbp - 16], rax
+    mov rax, QWORD PTR [rbp - 16]
+    mov [rbp - 8], rax
     mov eax, 3
     mov rsp, rbp
     pop rbp
