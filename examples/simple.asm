@@ -59,10 +59,13 @@ main:
     push rbp
     mov rbp, rsp
     sub rsp, 24
-    mov rax, LC1
+    lea rax,LC1
     mov [rbp - 16], rax
     mov rax, QWORD PTR [rbp - 16]
     mov [rbp - 8], rax
+    mov rdi, QWORD PTR [rbp - 8]
+    call puts
+    mov [rbp - 20], eax
     mov eax, 3
     mov rsp, rbp
     pop rbp
@@ -74,4 +77,4 @@ main:
 
 .data
 LC1:
-.string "helloworld"
+.asciz "hellosworld"

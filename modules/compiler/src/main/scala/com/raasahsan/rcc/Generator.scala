@@ -9,8 +9,9 @@ class Generator {
   import AST._
 
   // TODO: typed registers will be necessary
+  // r7, r6
   val CallParameterRegisters =
-    List(Register.edi, Register.esi, Register.edx, Register.ecx, Register.e8, Register.e9)
+    List(7, 6, 2, 1, 8, 9)
 
   // Labels have function scope in C but global scope in assembly
   var stringLabelIndex = 0
@@ -39,12 +40,18 @@ class Generator {
     // TODO: RegisterAllocator class?
 
     // TODO: Offset newtype
-
-    val arguments = fd.declarator.functionParameters
-      .map(_.map(_._1))
+    val argTypes = fd.tpe
+      .collect { case Type.Function(args, _) =>
+        args
+      }
       .get
+      .zip(fd.functionParameters.getOrElse(Nil).map(_._1))
+
+    val arguments = argTypes
       .zip(CallParameterRegisters)
-      .map((ident, reg) => ident -> RegisterAssignment.Register(reg))
+      .map { case ((tpe, ident), reg) =>
+        ident -> RegisterAssignment.Register(Register.sized(reg, tpe.dataSize).get)
+      }
       .toMap
 
     val frame = new StackFrame
@@ -67,9 +74,13 @@ class Generator {
               .flatMap { decl =>
                 decl.initDeclaratorList.get.declarators.toList.flatMap { initDecl =>
                   val ident = initDecl.declarator.identifier.get
-                  val size = initDecl.initializer.collect {
-                    case Initializer.Expression(e) => e.tpe
-                  }.flatten.get.dataSize
+                  val size = initDecl.initializer
+                    .collect { case Initializer.Expression(e) =>
+                      e.tpe
+                    }
+                    .flatten
+                    .get
+                    .dataSize
                   val storage = frame.allocateNamed(ident.value, size)
                   initDecl.initializer
                     .map {
@@ -100,9 +111,9 @@ class Generator {
             case JumpStatement.Return(expr) =>
               val gen = expr
                 .map(generateExpression)
-                .map { (gen, assign) => 
+                .map { (gen, assign) =>
                   expr match {
-                    case Some(e) => 
+                    case Some(e) =>
                       gen |+| loadIntoRegister(Register.sized(0, e.tpe.get.dataSize).get, assign)
                     case None => gen
                   }
@@ -191,15 +202,16 @@ class Generator {
             genR,
             loadIntoRegister(Register.sized(0, size).get, assignL),
             loadIntoRegister(Register.sized(2, size).get, assignR),
-            Instruction.Add(Register.sized(0, size).get.operand, Register.sized(2, size).get.operand),
+            Instruction
+              .Add(Register.sized(0, size).get.operand, Register.sized(2, size).get.operand),
             load(resultAlloc.assignment, RegisterAssignment.Register(Register.sized(0, size).get))
           ) -> resultAlloc.assignment
         case Expression.FunctionCall(fexpr, fargs) =>
           fexpr match {
             case Expression.Identifier(fname) =>
               val args = fargs.map(_.args.toList).getOrElse(Nil)
-              val returnSize = fexpr.tpe.collect {
-                case Type.Function(args, ret) => ret.dataSize
+              val returnSize = fexpr.tpe.collect { case Type.Function(args, ret) =>
+                ret.dataSize
               }.get
               val returnAlloc = frame.allocate(returnSize)
 
@@ -212,7 +224,10 @@ class Generator {
                 .zip(args)
                 .map { (register, expr) =>
                   val (genExpr, assignExpr) = generateExpression(expr)
-                  genExpr |+| loadIntoRegister(register, assignExpr)
+                  genExpr |+| loadIntoRegister(
+                    Register.sized(register, expr.tpe.get.dataSize).get,
+                    assignExpr
+                  )
                 }
                 .combineAll
 
@@ -220,7 +235,10 @@ class Generator {
               instructions(
                 genExprs,
                 Instruction.Call(fname.value),
-                load(returnAlloc.assignment, RegisterAssignment.Register(Register.sized(0, returnSize).get))
+                load(
+                  returnAlloc.assignment,
+                  RegisterAssignment.Register(Register.sized(0, returnSize).get)
+                )
               ) -> returnAlloc.assignment
             case _ => ???
           }
@@ -256,7 +274,7 @@ class Generator {
           )
         case RegisterAssignment.Label(label) =>
           instructions(
-            Instruction.Mov(addr.operand, label.operand)
+            Instruction.Lea(addr.operand, label.operand)
           )
       }
 
@@ -276,7 +294,7 @@ class Generator {
           )
         case RegisterAssignment.Label(label) =>
           instructions(
-            Instruction.Mov(reg.operand, label.operand)
+            Instruction.Lea(reg.operand, label.operand)
           )
       }
 

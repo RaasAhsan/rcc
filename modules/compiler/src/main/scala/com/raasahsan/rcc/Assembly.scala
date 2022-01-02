@@ -217,6 +217,8 @@ object Assembly {
     case Jmp(label: String)
     case Je(label: String)
     case Jne(label: String)
+    // TODO: constraint on addresses
+    case Lea(dst: Operand.Destination, src: Operand.Source)
 
     def line: Line = Line.Instruction(this)
   }
@@ -243,11 +245,11 @@ object Assembly {
     // TODO: type constraints
     def sized(index: Int, size: DataSize): Option[Register] =
       if (index >= 0 && index <= 7) {
-        val bases = List("ax", "cx", "dx", "bx", "sp", "bp", "si", "bi")
+        val bases = List("ax", "cx", "dx", "bx", "bp", "sp", "si", "di")
         val prefix = size match {
           case DataSize.Dword => "e"
           case DataSize.Qword => "r"
-          case _ => ???
+          case _              => ???
         }
         Some(Register(prefix + bases(index)))
       } else if (index <= 15) {
@@ -255,7 +257,7 @@ object Assembly {
         val suffix = size match {
           case DataSize.Dword => "d"
           case DataSize.Qword => ""
-          case _ => ???
+          case _              => ???
         }
         Some(Register(base + suffix))
       } else {
@@ -336,11 +338,11 @@ object Assembly {
 
   def renderOperand(operand: Operand): String =
     operand match {
-      case Operand.Immediate(imm) => s"${imm.value}"
-      case Operand.Register(reg)  => s"${reg.name}"
-      case Operand.Address(addr)  => s"[${renderAddress(addr)}]"
+      case Operand.Immediate(imm)     => s"${imm.value}"
+      case Operand.Register(reg)      => s"${reg.name}"
+      case Operand.Address(addr)      => s"[${renderAddress(addr)}]"
       case Operand.SizedAddress(addr) => s"${addr.size.directive} [${renderAddress(addr.address)}]"
-      case Operand.Label(label)   => label.name
+      case Operand.Label(label)       => label.name
     }
 
   def renderAddress(address: Address): String =
@@ -359,7 +361,7 @@ object Assembly {
       case Directive.Text                 => ".text"
       case Directive.Data                 => ".data"
       case Directive.IntelSyntax          => ".intel_syntax noprefix"
-      case Directive.StringLiteral(value) => s".string \"$value\""
+      case Directive.StringLiteral(value) => s".asciz \"$value\""
     }
 
   def renderInstruction(instr: Instruction): String = {
@@ -378,6 +380,7 @@ object Assembly {
       case Jmp(label)    => s"jmp $label"
       case Je(label)     => s"je $label"
       case Jne(label)    => s"jne $label"
+      case Lea(dst, src) => s"lea ${renderOperand(dst)},${renderOperand(src)}"
     }
   }
 

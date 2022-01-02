@@ -22,7 +22,12 @@ class StackFrame {
 
   def allocate(size: DataSize): Allocation = {
     stackOffset += size.size
-    Allocation(RegisterAssignment.Memory(SizedAddress(Address.IndirectDisplacement(Register.rbp, -stackOffset), size)), size)
+    Allocation(
+      RegisterAssignment.Memory(
+        SizedAddress(Address.IndirectDisplacement(Register.rbp, -stackOffset), size)
+      ),
+      size
+    )
   }
 
   def get(name: String): Allocation =

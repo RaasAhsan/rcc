@@ -18,7 +18,7 @@ object AST {
       declarator: Declarator,
       declarationList: Option[DeclarationList],
       statements: CompoundStatement
-  ) {
+  ) extends Typable {
     def functionName: Option[Identifier] = declarator.functionName
     def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
       declarator.functionParameters

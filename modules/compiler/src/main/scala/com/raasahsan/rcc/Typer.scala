@@ -11,11 +11,13 @@ object Typer {
 
   def typeCheck(unit: TranslationUnit): Either[String, TypingContext] =
     unit.externalDeclarations.toList
-      .collect { case ExternalDeclaration.FunctionDefinition(fd) =>
-        fd
-      }
-      .foldLeftM(Map[Identifier, Type]()) { case (ctx, fd) =>
-        typeCheckFunctionDefinition(fd, ctx)
+      .foldLeftM(Map[Identifier, Type]()) { case (ctx, ed) =>
+        ed match {
+          case ExternalDeclaration.FunctionDefinition(fd) =>
+            typeCheckFunctionDefinition(fd, ctx)
+          case ExternalDeclaration.Declaration(decl) =>
+            typeCheckDeclaration(decl, ctx)
+        }
       }
 
   def typeCheckFunctionDefinition(
@@ -38,7 +40,11 @@ object Typer {
         typeCheckDeclarations(decls, innerCtx1)
       )
       _ <- typeCheckStatement(Statement.Compound(fd.statements), innerCtx2)
-    } yield ctx + (ident -> Type.Function(argTpes.map(_._2), returnTpe))
+    } yield {
+      val tpe = Type.Function(argTpes.map(_._2), returnTpe)
+      fd.tpe = Some(tpe)
+      ctx + (ident -> tpe)
+    }
 
   def typeCheckDeclarations(
       decls: DeclarationList,
@@ -82,17 +88,36 @@ object Typer {
         (acc, init) =>
           val tpe = init.declarator.pointer.map(_ => Type.Pointer(baseTpe)).getOrElse(baseTpe)
           // TODO: a declaration declares an identifier at most ONCE
-          for {
-            ident <- init.declarator.identifier.fold(Left("no identifier found in declarator"))(Right(_))
-            // TODO: some combinator that only validates when a value is present
-            _ <- init.initializer match {
-              case Some(Initializer.Expression(expr)) => 
-                typeCheckExpression(expr, ctx).flatMap { itpe =>
-                  if (itpe == tpe) Right(()) else Left("Initializer types did not match")
-                }
-              case _ => Right(())
-            }
-          } yield acc + (ident -> tpe)
+
+          val nextTpe = init.declarator.directDeclarator match {
+            case DirectDeclarator.Identifier(ident) =>
+              init.initializer match {
+                case Some(Initializer.Expression(expr)) =>
+                  typeCheckExpression(expr, ctx).flatMap { itpe =>
+                    if (itpe == tpe) Right(ident -> tpe)
+                    else Left("Initializer types did not match")
+                  }
+                case _ => Right(ident -> tpe)
+              }
+            case DirectDeclarator.FunctionDeclarator(decl, params) =>
+              for {
+                ident <- decl.identifier.fold(Left("ident not found"))(Right(_))
+                paramTypes <- params.parameterList.parameters.toList
+                  .map { case ParameterDeclaration.Declarator(specs, decl) =>
+                    specs -> decl.pointer
+                  }
+                  .traverse { case (specifiers, pointer) =>
+                    specifiersToType(specifiers)
+                      .fold(Left("no argument type found"))(Right(_))
+                      .map(tpe => pointer.map(_ => Type.Pointer(tpe)).getOrElse(tpe))
+                  }
+              } yield ident -> Type.Function(paramTypes, tpe)
+            case _ => Left("unknown declaration")
+          }
+
+          nextTpe.map { mapping =>
+            ctx + mapping
+          }
       }
     } yield nextCtx
 
@@ -164,7 +189,24 @@ object Typer {
           rt <- typeCheckExpression(r, ctx)
           _ <- if (lt == rt) Right(()) else Left("both sides of expression must type same")
         } yield lt
-      case _ => Left("invalid expression")
+      case Expression.FunctionCall(func, args) =>
+        for {
+          tpe <- typeCheckExpression(func, ctx)
+          fty <- tpe match {
+            case Type.Function(pts, rt) => Right(pts -> rt)
+            case _                      => Left("function type expected")
+          }
+          paramTypes <- args
+            .map(_.args.toList)
+            .getOrElse(Nil)
+            .traverse(expr => typeCheckExpression(expr, ctx))
+          _ = println(tpe)
+          _ = println(paramTypes)
+          _ <-
+            if (paramTypes == fty._1) Right(())
+            else Left("function type and arguments do not match")
+        } yield fty._2
+      case x => Left(s"invalid expression $x")
     }
 
     expr.tpe = tpe.toOption

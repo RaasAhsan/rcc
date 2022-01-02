@@ -5,6 +5,7 @@ import com.raasahsan.rcc.AST.ExternalDeclaration
 object Main {
 
   val program = """
+      int puts(char *s);
 
       int add(int x, int y) {
         return x + y;
@@ -21,7 +22,8 @@ object Main {
       }
   
       int main() {
-        char* str = "helloworld";
+        char* str = "hellosworld";
+        puts(str);
         return 3;
       }
   

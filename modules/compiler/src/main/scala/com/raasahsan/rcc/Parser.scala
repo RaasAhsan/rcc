@@ -16,7 +16,7 @@ object Parser {
       .withContext("translationUnit")
 
   def externalDeclaration: P[ExternalDeclaration] = (
-    functionDefinition.map(ExternalDeclaration.FunctionDefinition(_)) |
+    functionDefinition.map(ExternalDeclaration.FunctionDefinition(_)).backtrack |
       declaration.map(ExternalDeclaration.Declaration(_))
   ).withContext("externalDeclaration")
 
