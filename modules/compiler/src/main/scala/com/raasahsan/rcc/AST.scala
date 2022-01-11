@@ -196,6 +196,7 @@ object AST {
     final case class FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
         extends Expression
     final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
+    final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
   }
 

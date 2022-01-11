@@ -58,14 +58,21 @@ L2:
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 24
+    sub rsp, 40
     lea rax,LC1
     mov [rbp - 16], rax
     mov rax, QWORD PTR [rbp - 16]
     mov [rbp - 8], rax
+    mov rax, QWORD PTR [rbp - 8]
+    mov [rbp - 25], rax
+    mov rax, QWORD PTR [rbp - 25]
+    mov [rbp - 17], rax
     mov rdi, QWORD PTR [rbp - 8]
     call puts
-    mov [rbp - 20], eax
+    mov [rbp - 29], eax
+    mov dil, BYTE PTR [rbp - 17]
+    call putchar
+    mov [rbp - 33], eax
     mov eax, 3
     mov rsp, rbp
     pop rbp

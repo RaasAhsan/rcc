@@ -200,12 +200,24 @@ object Typer {
             .map(_.args.toList)
             .getOrElse(Nil)
             .traverse(expr => typeCheckExpression(expr, ctx))
-          _ = println(tpe)
-          _ = println(paramTypes)
           _ <-
             if (paramTypes == fty._1) Right(())
             else Left("function type and arguments do not match")
         } yield fty._2
+      case Expression.Reference(expr) =>
+        for {
+          tpe <- typeCheckExpression(expr, ctx)
+          _ <- if (isLvalue(expr)) Right(()) else Left("modifiable lvalue expected for unary referencing")
+        } yield Type.Pointer(tpe)
+      case Expression.Dereference(expr) =>
+        for {
+          tpe <- typeCheckExpression(expr, ctx)
+          _ <- if (isLvalue(expr)) Right(()) else Left("modifiable lvalue expected for unary dereferencing")
+          utpe <- tpe match {
+            case Type.Pointer(u) => Right(u)
+            case _ => Left("pointer type expected")
+          }
+        } yield utpe
       case x => Left(s"invalid expression $x")
     }
 
@@ -213,5 +225,11 @@ object Typer {
 
     tpe
   }
+
+  def isLvalue(expr: Expression): Boolean =
+    expr match {
+      case Expression.Identifier(_) => true
+      case _ => false
+    }
 
 }

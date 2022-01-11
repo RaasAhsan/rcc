@@ -6,6 +6,7 @@ object Main {
 
   val program = """
       int puts(char *s);
+      int putchar(char s);
 
       int add(int x, int y) {
         return x + y;
@@ -23,7 +24,9 @@ object Main {
   
       int main() {
         char* str = "hellosworld";
+        char c = *str;
         puts(str);
+        putchar(c);
         return 3;
       }
   

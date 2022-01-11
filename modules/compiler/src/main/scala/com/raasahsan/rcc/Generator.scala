@@ -244,7 +244,15 @@ class Generator {
           }
         case Expression.Dereference(expr) =>
           val (gen, assign) = generateExpression(expr)
-          ???
+          val utpe = expr.tpe.get
+          val alloc = frame.allocate(utpe.dataSize)
+          instructions(
+            gen,
+            load(
+              alloc.assignment,
+              assign
+            )
+          ) -> alloc.assignment
         case _ => ???
       }
 

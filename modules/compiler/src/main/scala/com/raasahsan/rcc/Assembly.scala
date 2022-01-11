@@ -249,6 +249,7 @@ object Assembly {
         val prefix = size match {
           case DataSize.Dword => "e"
           case DataSize.Qword => "r"
+          case DataSize.Byte  => ""
           case _              => ???
         }
         Some(Register(prefix + bases(index)))

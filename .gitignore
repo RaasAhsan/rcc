@@ -7,3 +7,5 @@ a.out
 *.o
 .bsp
 metals.sbt
+*.bc
+*.s

@@ -13,6 +13,9 @@ lazy val cli = project
   )
   .dependsOn(compiler)
 
+lazy val llvm = project
+  .in(file("modules/llvm"))
+
 lazy val compiler = project
   .in(file("modules/compiler"))
   .settings(
