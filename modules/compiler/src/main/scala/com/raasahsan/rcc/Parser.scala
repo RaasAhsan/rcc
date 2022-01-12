@@ -63,6 +63,18 @@ object Parser {
       keyword("auto").as(StorageClassSpecifier.Auto) |
       keyword("register").as(StorageClassSpecifier.Register)
 
+  def typeName: P[TypeName] =
+    (typeSpecifierOrQualifier.rep ~ abstractDeclarator.?).map { (ts, ad) =>
+      TypeName(ts, ad)
+    }
+
+  def abstractDeclarator: P[AbstractDeclarator] =
+    pointer.map(AbstractDeclarator(_))
+
+  def typeSpecifierOrQualifier: P[TypeSpecifierOrQualifier] =
+    typeSpecifier.map(TypeSpecifierOrQualifier.Specifier(_)) |
+      typeQualifier.map(TypeSpecifierOrQualifier.Qualifier(_))
+
   // TODO: finish with composite types
   def typeSpecifier: P[TypeSpecifier] =
     keyword("void").as(TypeSpecifier.Void) |
@@ -206,7 +218,7 @@ object Parser {
     def op: P[Op] =
       star.as(Star) | divide.as(Divide) | modulo.as(Modulo)
 
-    (unaryExpression ~ (op ~ unaryExpression).rep0).map { (h, t) =>
+    (castExpression ~ (op ~ castExpression).rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, (op, expr)) =>
         op match {
           case Star   => Expression.Times(acc, expr)
@@ -216,6 +228,13 @@ object Parser {
       }
     }
   }
+
+  def castExpression: P[Expression] =
+    (withParentheses(typeName).rep0.with1 ~ unaryExpression).map { (types, expr) =>
+      types.foldRight(expr) { (tn, acc) =>
+        Expression.Cast(tn, acc)
+      }
+    }
 
   def unaryExpression: P[Expression] = {
     enum Op {
@@ -229,10 +248,11 @@ object Parser {
       star.as(Dereference) |
         ampersand.as(Reference)
 
+    // TODO: different uses of cast and unary expression must be allowed here
     (op.rep0.with1 ~ postfixExpression).map { (ops, expr) =>
       ops.reverse.foldLeft(expr) { case (acc, op) =>
         op match {
-          case Reference => Expression.Reference(expr)
+          case Reference   => Expression.Reference(expr)
           case Dereference => Expression.Dereference(expr)
         }
       }
@@ -307,10 +327,10 @@ object Parser {
   def constant: P[Constant] =
     integerConstant.map(Constant.IntegerConstant(_)) <* maybeWhitespace
 
-  // TODO: refine with other types of constants
   def integerConstant: P[Int] =
     decimalConstant.backtrack |
-      octalConstant
+      octalConstant.backtrack |
+      hexadecimalConstant
 
   def decimalConstant: P[Int] =
     (nonzeroDigit ~ digit.rep0).map { (h, t) =>
@@ -319,6 +339,11 @@ object Parser {
 
   def octalConstant: P[Int] =
     zero.as(0)
+
+  def hexadecimalConstant: P[Int] =
+    ((P.string("0x") | P.string("0X")) *> hexadecimalDigit.rep).map { digits =>
+      Integer.decode(digits.toList.mkString)
+    }
 
   def keyword(t: String): P[Unit] =
     P.string(t) <* maybeWhitespace
@@ -335,6 +360,8 @@ object Parser {
       .map(Identifier(_))
 
   def digit: P[Char] = P.charIn(('0' to '9').toList)
+  def hexadecimalDigit: P[Char] =
+    P.charIn(('0' to '9').toList ++ ('A' to 'F').toList ++ ('a' to 'f').toList)
   def nonzeroDigit: P[Char] = P.charIn(('1' to '9').toList)
   def zero: P[Unit] = P.char('0')
   def nondigit: P[Char] = P.charIn('_' :: ('a' to 'z').toList ::: ('A' to 'Z').toList)

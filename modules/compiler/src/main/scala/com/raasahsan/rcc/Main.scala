@@ -8,6 +8,8 @@ object Main {
       int puts(char *s);
       int putchar(char s);
 
+      unsigned int* baseaddr = (unsigned int*) 0xb9000;
+
       int add(int x, int y) {
         return x + y;
       }
@@ -33,20 +35,20 @@ object Main {
   """
 
   def main(args: Array[String]): Unit = {
-    println(program.substring(278))
+    // println(program.substring(278))
     val result = Parser.parse(program)
-    // println(result)
+    println(result)
 
     val p = result.toOption.get
     val typed = Typer.typeCheck(p)
     println(typed)
 
-    val generator = new Generator
-    val gen = generator.generateTranslationUnit(p)
-    val render = Assembly.renderProgram(gen)
+    // val generator = new Generator
+    // val gen = generator.generateTranslationUnit(p)
+    // val render = Assembly.renderProgram(gen)
 
-    val outDir = os.pwd / "examples"
-    os.write.over(outDir / "simple.asm", render)
+    // val outDir = os.pwd / "examples"
+    // os.write.over(outDir / "simple.asm", render)
 
     println("Wrote file")
   }

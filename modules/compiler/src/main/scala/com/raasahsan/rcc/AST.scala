@@ -2,6 +2,7 @@ package com.raasahsan.rcc
 
 import cats.syntax.all._
 import cats.data.NonEmptyList
+import cats.data.Ior
 
 object AST {
   // The unit of program text after preprocessing is called a translation unit,
@@ -69,6 +70,18 @@ object AST {
     case StorageClassSpecifier(value: AST.StorageClassSpecifier)
     case TypeSpecifier(value: AST.TypeSpecifier)
     case TypeQualifier(value: AST.TypeQualifier)
+  }
+
+  final case class TypeName(
+      specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier],
+      abstractDeclarator: Option[AbstractDeclarator]
+  )
+
+  final case class AbstractDeclarator(pointer: Pointer)
+
+  enum TypeSpecifierOrQualifier {
+    case Specifier(s: TypeSpecifier)
+    case Qualifier(q: TypeQualifier)
   }
 
   enum StorageClassSpecifier {
@@ -198,6 +211,7 @@ object AST {
     final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
     final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
+    final case class Cast(typeName: TypeName, expr: Expression) extends Expression
   }
 
   enum AssignmentOperator {

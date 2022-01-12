@@ -63,18 +63,6 @@ object Typer {
       typeCheckStatement(stmt, acc)
     }
 
-  val specifierMapping: Map[Set[TypeSpecifier], Type] = Map(
-    Set(TypeSpecifier.Int) -> Type.Int,
-    Set(TypeSpecifier.Char) -> Type.Char
-  )
-
-  def specifiersToType(specifiers: DeclarationSpecifiers): Option[Type] = {
-    val key = specifiers.specifiers.toList.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>
-      ts
-    }.toSet
-    specifierMapping.get(key)
-  }
-
   def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
     pointer.fold(tpe)(_ => Type.Pointer(tpe))
 
@@ -207,17 +195,27 @@ object Typer {
       case Expression.Reference(expr) =>
         for {
           tpe <- typeCheckExpression(expr, ctx)
-          _ <- if (isLvalue(expr)) Right(()) else Left("modifiable lvalue expected for unary referencing")
+          _ <-
+            if (isLvalue(expr)) Right(())
+            else Left("modifiable lvalue expected for unary referencing")
         } yield Type.Pointer(tpe)
       case Expression.Dereference(expr) =>
         for {
           tpe <- typeCheckExpression(expr, ctx)
-          _ <- if (isLvalue(expr)) Right(()) else Left("modifiable lvalue expected for unary dereferencing")
+          _ <-
+            if (isLvalue(expr)) Right(())
+            else Left("modifiable lvalue expected for unary dereferencing")
           utpe <- tpe match {
             case Type.Pointer(u) => Right(u)
-            case _ => Left("pointer type expected")
+            case _               => Left("pointer type expected")
           }
         } yield utpe
+      case Expression.Cast(typeName, expr) =>
+        for {
+          tpe <- typeCheckExpression(expr, ctx)
+          castTpe <- typeNameToType(typeName).fold(Left("invalid type"))(Right(_))
+          _ <- compatibleCast(tpe, castTpe)
+        } yield castTpe
       case x => Left(s"invalid expression $x")
     }
 
@@ -226,10 +224,37 @@ object Typer {
     tpe
   }
 
+  def compatibleCast(source: Type, target: Type): Either[String, Unit] =
+    (target, source) match {
+      case (Type.Pointer(_), Type.Int) => Right(())
+      case _ if source == target       => Right(())
+      case _                           => Left("invalid cast")
+    }
+
   def isLvalue(expr: Expression): Boolean =
     expr match {
       case Expression.Identifier(_) => true
-      case _ => false
+      case _                        => false
     }
+
+  val specifierMapping: Map[Set[TypeSpecifier], Type] = Map(
+    Set(TypeSpecifier.Int) -> Type.Int,
+    Set(TypeSpecifier.Char) -> Type.Char,
+    Set(TypeSpecifier.Unsigned, TypeSpecifier.Int) -> Type.UnsignedInt
+  )
+
+  def specifiersToType(specifiers: DeclarationSpecifiers): Option[Type] = {
+    val key = specifiers.specifiers.toList.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>
+      ts
+    }.toSet
+    specifierMapping.get(key)
+  }
+
+  def typeNameToType(typeName: TypeName): Option[Type] = {
+    val key = typeName.specifierQualifiers.toList.collect {
+      case TypeSpecifierOrQualifier.Specifier(s) => s
+    }.toSet
+    specifierMapping.get(key).map(b => typeName.abstractDeclarator.fold(b)(_ => Type.Pointer(b)))
+  }
 
 }

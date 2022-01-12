@@ -7,6 +7,7 @@ enum Type {
   case Char
   case Short
   case Int
+  case UnsignedInt
   case Long
   case Float
   case Double
@@ -20,6 +21,7 @@ enum Type {
       case Char           => 1
       case Short          => 2
       case Int            => 4
+      case UnsignedInt    => 4
       case Long           => 8
       case Float          => 4
       case Double         => 8
@@ -34,6 +36,7 @@ enum Type {
       case Char           => DataSize.Byte
       case Short          => DataSize.Word
       case Int            => DataSize.Dword
+      case UnsignedInt    => DataSize.Dword
       case Long           => DataSize.Qword
       case Float          => DataSize.Dword
       case Double         => DataSize.Dword

@@ -1,7 +1,7 @@
 
 lazy val root = project
   .in(file("."))
-  .aggregate(cli, compiler)
+  .aggregate(cli, compiler, llvm)
 
 lazy val cli = project
   .in(file("modules/cli"))
@@ -25,3 +25,4 @@ lazy val compiler = project
       Dependencies.osLib
     )
   )
+  .dependsOn(llvm)
