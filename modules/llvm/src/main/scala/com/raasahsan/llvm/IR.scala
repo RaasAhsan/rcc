@@ -2,7 +2,11 @@ package com.raasahsan.llvm
 
 object IR {
 
-  final case class Module()
+  final case class Module(topLevelDeclarations: List[TopLevelDeclaration])
+
+  enum TopLevelDeclaration {
+    case FunctionDefinition(fd: IR.FunctionDefinition)
+  }
 
   enum Linkage {
     case External

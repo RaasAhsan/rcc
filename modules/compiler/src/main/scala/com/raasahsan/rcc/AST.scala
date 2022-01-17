@@ -117,7 +117,8 @@ object AST {
   final case class InitDeclaratorList(declarators: NonEmptyList[InitDeclarator])
 
   // TODO: break apart Typable in our custom AST so the type is explicit
-  final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer]) extends Typable
+  final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
+      extends Typable
 
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
     def identifier: Option[Identifier] = directDeclarator.identifier
