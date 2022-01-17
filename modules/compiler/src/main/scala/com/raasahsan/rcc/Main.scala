@@ -1,10 +1,19 @@
 package com.raasahsan.rcc
 
 import com.raasahsan.rcc.AST.ExternalDeclaration
+import com.raasahsan.rcc.codegen.llvm._
 
 object Main {
 
   val program = """
+  
+    int main() {
+      int x = 3;
+      return x;
+    }
+  """
+
+  val program2 = """
       int puts(char *s);
       int putchar(char s);
 
@@ -47,8 +56,13 @@ object Main {
     // val gen = generator.generateTranslationUnit(p)
     // val render = Assembly.renderProgram(gen)
 
-    // val outDir = os.pwd / "examples"
-    // os.write.over(outDir / "simple.asm", render)
+    val module = LLVMBackend.translate(p)
+
+    println(module)
+    val render = LLVMRenderer.render(module)
+
+    val outDir = os.pwd / "examples"
+    os.write.over(outDir / "simple.ll", render)
 
     println("Wrote file")
   }

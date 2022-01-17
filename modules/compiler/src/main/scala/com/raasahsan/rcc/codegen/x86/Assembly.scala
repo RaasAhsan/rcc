@@ -1,4 +1,5 @@
 package com.raasahsan.rcc
+package codegen.x86
 
 import cats.Monoid
 import cats.syntax.all._

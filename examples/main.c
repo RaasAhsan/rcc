@@ -18,6 +18,11 @@ int foo(int x, int y) {
     return z + a + b;
 }
 
+int foo3() {
+    int z = 4;
+    return z;
+}
+
 int main() {
     int y = 4;
     foo2(&y, 4);

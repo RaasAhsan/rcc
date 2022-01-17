@@ -1,8 +1,7 @@
 package com.raasahsan.rcc
+package codegen.llvm
 
 import cats.syntax.all._
-
-import com.raasahsan.llvm.IR
 
 object LLVMBackend {
 
@@ -36,6 +35,16 @@ object LLVMBackend {
           expr.expr.map(e => translateExpression(e, symbols).code).getOrElse(Nil)
         case AST.Statement.Compound(compound) =>
           translateCompoundStatement(compound, symbols)
+        case AST.Statement.Jump(jump) =>
+          jump match {
+            case AST.JumpStatement.Return(ret) => 
+              ret match {
+                case Some(e) => 
+                  val gen = translateExpression(e, symbols)
+                  gen.code ++ List(IR.Op.Ret(IR.Return.Value(gen.tpe, gen.value)).instruction)
+                case None => List(IR.Op.Ret(IR.Return.Void).instruction)
+              }
+          }
       }
 
     def translateCompoundStatement(
@@ -81,15 +90,17 @@ object LLVMBackend {
                 case _ => ???
               }
               val symbol = IRSymbol(ident, localValue, localTpe)
-              acc.addInstructions(exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
+              acc.addInstructions(List(alloc) ++ exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
           }
         }
 
-      stmt.statementList
+      val body = stmt.statementList
         .map(_.statements.toList)
         .getOrElse(Nil)
         .map(stmt => translateStatement(stmt, declState.symbols))
         .combineAll
+
+      declState.instructions ++ body
     }
 
     def translateExpression(
@@ -104,7 +115,9 @@ object LLVMBackend {
           }
         case AST.Expression.Identifier(ident) =>
           val entry = symbols.get(ident).get
-          ExpressionGen(Nil, entry.value, entry.tpe)
+          val index = nextLocal()
+          val load = IR.Op.Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value).instruction(index)
+          ExpressionGen(List(load), IR.Value.Local(index), entry.tpe)
         case AST.Expression.Plus(e1, e2) =>
           val gen1 = translateExpression(e1, symbols)
           val gen2 = translateExpression(e2, symbols)
@@ -125,6 +138,10 @@ object LLVMBackend {
       val index = nextLocal()
       ident -> IRSymbol(ident, IR.Value.Local(index), translateType(tpe))
     }.toMap
+    // arguments begin with %0, registers begin with %1
+    if (local == -1) {
+      local = 0
+    }
     val instructions = translateCompoundStatement(fd.statements, startingSymbols)
 
     IR.FunctionDefinition(

@@ -1,4 +1,4 @@
-package com.raasahsan.llvm
+package com.raasahsan.rcc.codegen.llvm
 
 object IR {
 
@@ -56,7 +56,7 @@ object IR {
 
     // Memory operations
     case Alloca(tpe: Type, alignment: Option[Int])
-    case Load(volatile: Boolean, tpe: Type, ptrTpe: Type, ptr: String)
+    case Load(volatile: Boolean, tpe: Type, ptrTpe: Type, ptr: Value)
     case Store(volatile: Boolean, tpe: Type, value: Value, ptrTpe: Type, ptr: Value)
     case Getelementptr()
 
@@ -69,7 +69,7 @@ object IR {
 
   enum Return {
     case Void
-    case Value(tpe: Type, value: String)
+    case Value(tpe: Type, value: IR.Value)
   }
 
   enum Branch {

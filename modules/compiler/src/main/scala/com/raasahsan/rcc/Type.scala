@@ -1,6 +1,6 @@
 package com.raasahsan.rcc
 
-import Assembly._
+import com.raasahsan.rcc.codegen.x86.Assembly._
 
 // TODO: struct, union, typedef / user-defined types?
 enum Type {
