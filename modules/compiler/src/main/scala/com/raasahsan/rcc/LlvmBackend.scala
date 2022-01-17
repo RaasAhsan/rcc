@@ -1,8 +1,16 @@
 package com.raasahsan.rcc
 
+import cats.syntax.all._
+
 import com.raasahsan.llvm.IR
+import com.raasahsan.rcc.AST.Initializer
+import com.raasahsan.rcc.AST.Declaration
 
 object LLVMBackend {
+
+  final case class IRSymbol(identifier: AST.Identifier, value: IR.Value, tpe: IR.Type)
+
+  final case class ExpressionGen(code: List[IR.Instruction], value: IR.Value, tpe: IR.Type)
 
   def translate(translationUnit: AST.TranslationUnit): IR.Module = ???
 
@@ -14,36 +22,68 @@ object LLVMBackend {
       local
     }
 
-    def translateStatement(stmt: AST.Statement): List[IR.Instruction] = {
+    def translateStatement(stmt: AST.Statement, symbols: Map[AST.Identifier, IRSymbol]): List[IR.Instruction] = {
       stmt match {
         case AST.Statement.Expression(expr) =>
-          expr.expr.map(e => translateExpression(e)).getOrElse(Nil)
+          expr.expr.map(e => translateExpression(e, symbols).code).getOrElse(Nil)
         case AST.Statement.Compound(compound) =>
-          
-          ???
+          translateCompoundStatement(compound, symbols)
       }
     }
 
-    def translateExpression(expr: AST.Expression): List[IR.Instruction] = {
-      final case class Gen(code: List[IR.Instruction], value: IR.Value, tpe: IR.Type)
+    def translateCompoundStatement(stmt: AST.CompoundStatement, symbols: Map[AST.Identifier, IRSymbol]): List[IR.Instruction] = {
+      final case class DeclarationState(instructions: List[IR.Instruction], symbols: Map[AST.Identifier, IRSymbol]) {
+        def addInstructions(ni: List[IR.Instruction]): DeclarationState = DeclarationState(instructions ++ ni, symbols)
+        def addSymbol(ident: AST.Identifier, symbol: IRSymbol): DeclarationState = DeclarationState(instructions, symbols + (ident -> symbol))
+      }
+      object DeclarationState {
+        def apply(): DeclarationState = DeclarationState(Nil, Map())
+      }
 
-      def go(e: AST.Expression): Gen = {
-        val exprTpe = translateType(expr.tpe.get)
-        e match {
-          case AST.Expression.Constant(c) =>
-            c match {
-              case AST.Constant.IntegerConstant(i) => Gen(Nil, IR.Value.Integer(i), exprTpe)
-            }
-          case AST.Expression.Plus(e1, e2) => 
-            val gen1 = go(e1)
-            val gen2 = go(e2)
-            val resultLocal = nextLocal()
-            val add = IR.Op.Add(exprTpe, gen1.value, gen2.value).instruction(resultLocal)
-            Gen(gen1.code ++ gen2.code ++ List(add), IR.Value.Local(resultLocal), exprTpe)
+      // TODO: allocate all space for function at the same time (in all blocks)
+
+      val declState = stmt.declarationList.map(_.declarations.toList).getOrElse(Nil).foldLeft(DeclarationState()) { case (acc, decl) =>
+        decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).foldLeft(acc) { case (acc, initDecl) =>
+          val ident = initDecl.declarator.identifier.get
+
+          // TODO: fix alignment
+          val localIndex = nextLocal()
+          val localValue = IR.Value.Local(localIndex)
+          val localTpe = translateType(initDecl.tpe.get)
+          val alloc = IR.Op.Alloca(localTpe, Some(4)).instruction(localIndex)
+
+          val exprGen = initDecl.initializer.map {
+            case Initializer.Expression(expr) => 
+              val gen = translateExpression(expr, acc.symbols)
+              val store = IR.Op.Store(false, gen.tpe, gen.value, IR.Type.Pointer(gen.tpe), localValue).instruction
+              gen.code ++ List(store)
+            case _ => ???
+          }
+          val symbol = IRSymbol(ident, localValue, localTpe)
+          acc.addInstructions(exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
         }
       }
 
-      go(expr).code
+      stmt.statementList.map(_.statements.toList).getOrElse(Nil).map(stmt => translateStatement(stmt, declState.symbols)).combineAll
+    }
+
+    def translateExpression(expr: AST.Expression, symbols: Map[AST.Identifier, IRSymbol]): ExpressionGen = {
+      val exprTpe = translateType(expr.tpe.get)
+      expr match {
+        case AST.Expression.Constant(c) =>
+          c match {
+            case AST.Constant.IntegerConstant(i) => ExpressionGen(Nil, IR.Value.Integer(i), exprTpe)
+          }
+        case AST.Expression.Identifier(ident) => 
+          val entry = symbols.get(ident).get
+          ExpressionGen(Nil, entry.value, entry.tpe)
+        case AST.Expression.Plus(e1, e2) => 
+          val gen1 = translateExpression(e1, symbols)
+          val gen2 = translateExpression(e2, symbols)
+          val resultLocal = nextLocal()
+          val add = IR.Op.Add(exprTpe, gen1.value, gen2.value).instruction(resultLocal)
+          ExpressionGen(gen1.code ++ gen2.code ++ List(add), IR.Value.Local(resultLocal), exprTpe)
+      }
     }
 
     ???

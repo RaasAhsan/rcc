@@ -9,7 +9,13 @@ int foo2(const int* x, volatile int y) {
 
 int foo(int x, int y) {
     int z = x * 2 + y * 3;
-    return z;
+    int a = x * 4;
+    int b = y + 3;
+    {
+        int c = y + 3;
+        int d = z + 2;
+    }
+    return z + a + b;
 }
 
 int main() {

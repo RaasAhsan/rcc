@@ -63,9 +63,6 @@ object Typer {
       typeCheckStatement(stmt, acc)
     }
 
-  def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
-    pointer.fold(tpe)(_ => Type.Pointer(tpe))
-
   // TODO: this only works for block-level declarations, not functions?
   def typeCheckDeclaration(decl: Declaration, ctx: TypingContext): Either[String, TypingContext] =
     for {
@@ -102,6 +99,8 @@ object Typer {
               } yield ident -> Type.Function(paramTypes, tpe)
             case _ => Left("unknown declaration")
           }
+
+          init.tpe = nextTpe.toOption.map(_._2)
 
           nextTpe.map { mapping =>
             ctx + mapping
@@ -242,6 +241,9 @@ object Typer {
     Set(TypeSpecifier.Char) -> Type.Char,
     Set(TypeSpecifier.Unsigned, TypeSpecifier.Int) -> Type.UnsignedInt
   )
+
+  def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
+    pointer.fold(tpe)(_ => Type.Pointer(tpe))
 
   def specifiersToType(specifiers: DeclarationSpecifiers): Option[Type] = {
     val key = specifiers.specifiers.toList.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>

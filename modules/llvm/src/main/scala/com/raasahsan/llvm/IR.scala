@@ -30,6 +30,8 @@ object IR {
     // Single value types
     case Integer(bits: Int)
 
+    case Pointer(tpe: Type)
+
     // Aggregate types
     case Array(num: Int, ty: Type)
 
@@ -38,7 +40,7 @@ object IR {
     case OpaqueStructure
   }
 
-  final case class Instruction(inde: Option[Int], op: Op)
+  final case class Instruction(index: Option[Int], op: Op)
 
   enum Op {
     // Terminator instructions
@@ -51,7 +53,7 @@ object IR {
     // Memory operations
     case Alloca(tpe: Type, alignment: Option[Int])
     case Load(volatile: Boolean, tpe: Type, ptrTpe: Type, ptr: String)
-    case Store(volatile: Boolean, tpe: Type, value: String, ptrTpe: Type, ptr: String)
+    case Store(volatile: Boolean, tpe: Type, value: Value, ptrTpe: Type, ptr: Value)
     case Getelementptr()
 
     // Conversion operations
