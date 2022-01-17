@@ -1,4 +1,1 @@
-
-object CliApp {
-  
-}
+object CliApp {}

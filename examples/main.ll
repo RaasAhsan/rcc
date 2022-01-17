@@ -21,6 +21,7 @@ define i32 @foo(i32 %0, i32 %1) #0 {
   %10 = add nsw i32 %7, %9
   store i32 %10, i32* %5, align 4
   %11 = load i32, i32* %5, align 4
+  %12 = store i32 %0, i32* %3, align 4
   ret i32 %11
 }
 
