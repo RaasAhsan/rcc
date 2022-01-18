@@ -13,10 +13,10 @@ $ ld hello.o
 
 ### LLVM
 ```
-$ llvm-as-13 simple.ll
-$ llc-13 simple.bc -o simple.s
-$ as -o simple.o simple.s
-$ ld -o simple -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o simple.o -lc /usr/lib/x86_64-linux-gnu/crtn.o
+$ llvm-as-13 simple.ll && \
+    llc-13 simple.bc -o simple.s && \
+    as -o simple.o simple.s && \
+    ld -o simple -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o simple.o -lc /usr/lib/x86_64-linux-gnu/crtn.o
 ```
 
 ### Reference

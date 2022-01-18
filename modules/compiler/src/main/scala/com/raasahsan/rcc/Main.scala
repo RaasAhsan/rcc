@@ -9,9 +9,8 @@ object Main {
   
     int main() {
       int x = 3;
-      int y = 5;
-      int z = x + y;
-      return z;
+      int* h = &x;
+      return *h;
     }
   """
 

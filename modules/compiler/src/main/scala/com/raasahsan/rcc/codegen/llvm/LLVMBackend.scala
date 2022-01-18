@@ -5,6 +5,7 @@ import cats.syntax.all._
 
 object LLVMBackend {
 
+  // For variables, value represents a pointer to a memory location representing tpe
   final case class IRSymbol(identifier: AST.Identifier, value: IR.Value, tpe: IR.Type)
 
   final case class ExpressionGen(code: List[IR.Instruction], value: IR.Value, tpe: IR.Type)
@@ -78,13 +79,13 @@ object LLVMBackend {
               val localIndex = nextLocal()
               val localValue = IR.Value.Local(localIndex)
               val localTpe = translateType(initDecl.tpe.get)
-              val alloc = IR.Op.Alloca(localTpe, Some(4)).instruction(localIndex)
+              val alloc = IR.Op.Alloca(localTpe, Some(typeAlignment(localTpe))).instruction(localIndex)
 
               val exprGen = initDecl.initializer.map {
                 case AST.Initializer.Expression(expr) =>
                   val gen = translateExpression(expr, acc.symbols)
                   val store = IR.Op
-                    .Store(false, gen.tpe, gen.value, IR.Type.Pointer(gen.tpe), localValue, Some(4))
+                    .Store(false, gen.tpe, gen.value, IR.Type.Pointer(gen.tpe), localValue, Some(typeAlignment(gen.tpe)))
                     .instruction
                   gen.code ++ List(store)
                 case _ => ???
@@ -117,7 +118,7 @@ object LLVMBackend {
           val entry = symbols.get(ident).get
           val index = nextLocal()
           val load = IR.Op
-            .Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value, Some(4))
+            .Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value, Some(typeAlignment(entry.tpe)))
             .instruction(index)
           ExpressionGen(List(load), IR.Value.Local(index), entry.tpe)
         case AST.Expression.Plus(e1, e2) =>
@@ -126,6 +127,30 @@ object LLVMBackend {
           val resultLocal = nextLocal()
           val add = IR.Op.Add(exprTpe, gen1.value, gen2.value).instruction(resultLocal)
           ExpressionGen(gen1.code ++ gen2.code ++ List(add), IR.Value.Local(resultLocal), exprTpe)
+        // TODO: is it possible to express this as a compositional fold?
+        // Note how a variable reference loads from the memory location, whereas a pointer just returns the value
+        case AST.Expression.Reference(rexpr) =>
+          rexpr match {
+            case AST.Expression.Identifier(ident) => 
+              val symbol = symbols.get(ident).get
+              ExpressionGen(Nil, symbol.value, IR.Type.Pointer(symbol.tpe))
+          }
+        // TODO: make this more compositional
+        // TODO: this doesn't work on *&var
+        case AST.Expression.Dereference(rexpr) =>
+          val gen = translateExpression(rexpr, symbols)
+          rexpr match {
+            case AST.Expression.Identifier(ident) => 
+              val symbol = symbols.get(ident).get
+              // TODO: this needs to be consistent with symbol table
+              val ptrTpe = translateType(rexpr.tpe.get)
+              val derefTpe = translateType(expr.tpe.get)
+              val ptrLocal = nextLocal()
+              val derefLocal = nextLocal()
+              val l1 = IR.Op.Load(false, ptrTpe, IR.Type.Pointer(ptrTpe), symbol.value, Some(typeAlignment(ptrTpe))).instruction(ptrLocal)
+              val l2 = IR.Op.Load(false, derefTpe, IR.Type.Pointer(derefTpe), IR.Value.Local(ptrLocal), Some(typeAlignment(derefTpe))).instruction(derefLocal)
+              ExpressionGen(List(l1, l2), IR.Value.Local(derefLocal), derefTpe)
+          }
       }
     }
 
@@ -159,7 +184,16 @@ object LLVMBackend {
   def translateType(tpe: Type): IR.Type =
     tpe match {
       case Type.Int => IR.Type.Integer(32)
+      case Type.Pointer(tpe) => IR.Type.Pointer(translateType(tpe))
       case _        => ???
+    }
+
+  // TODO: depends on target/data layout? triples arm-none-eabi, x86_64-pc-linux-gnu
+  def typeAlignment(tpe: IR.Type): Int = 
+    tpe match {
+      case IR.Type.Integer(bits) => bits / 8
+      case IR.Type.Pointer(_) => 8
+      case _ => ???
     }
 
 }

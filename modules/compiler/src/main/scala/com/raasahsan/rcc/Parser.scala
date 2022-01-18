@@ -247,12 +247,10 @@ object Parser {
         ampersand.as(Reference)
 
     // TODO: different uses of cast and unary expression must be allowed here
-    (op.rep0.with1 ~ postfixExpression).map { (ops, expr) =>
-      ops.reverse.foldLeft(expr) { case (acc, op) =>
-        op match {
-          case Reference   => Expression.Reference(expr)
-          case Dereference => Expression.Dereference(expr)
-        }
+    postfixExpression.backtrack | (op ~ P.defer(castExpression)).map { (op, expr) =>
+      op match {
+        case Reference   => Expression.Reference(expr)
+        case Dereference => Expression.Dereference(expr)
       }
     }
   }
@@ -388,7 +386,7 @@ object Parser {
   def star: P[Unit] = operator("*")
   def divide: P[Unit] = operator("/")
   def modulo: P[Unit] = operator("%")
-  def ampersand: P[Unit] = operator("*")
+  def ampersand: P[Unit] = operator("&")
 
   def returnKeyword: P[Unit] = keyword("return")
   def ifKeyword: P[Unit] = keyword("if")
