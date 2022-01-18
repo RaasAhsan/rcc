@@ -230,11 +230,9 @@ object Parser {
   }
 
   def castExpression: P[Expression] =
-    (withParentheses(typeName).rep0.with1 ~ unaryExpression).map { (types, expr) =>
-      types.foldRight(expr) { (tn, acc) =>
-        Expression.Cast(tn, acc)
-      }
-    }
+    (withParentheses(typeName) ~ P.defer(castExpression)).map { (tn, expr) =>
+      Expression.Cast(tn, expr)
+    }.backtrack | unaryExpression
 
   def unaryExpression: P[Expression] = {
     enum Op {

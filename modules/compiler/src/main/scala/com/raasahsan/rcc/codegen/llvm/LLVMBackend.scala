@@ -37,9 +37,9 @@ object LLVMBackend {
           translateCompoundStatement(compound, symbols)
         case AST.Statement.Jump(jump) =>
           jump match {
-            case AST.JumpStatement.Return(ret) => 
+            case AST.JumpStatement.Return(ret) =>
               ret match {
-                case Some(e) => 
+                case Some(e) =>
                   val gen = translateExpression(e, symbols)
                   gen.code ++ List(IR.Op.Ret(IR.Return.Value(gen.tpe, gen.value)).instruction)
                 case None => List(IR.Op.Ret(IR.Return.Void).instruction)
@@ -116,7 +116,9 @@ object LLVMBackend {
         case AST.Expression.Identifier(ident) =>
           val entry = symbols.get(ident).get
           val index = nextLocal()
-          val load = IR.Op.Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value, Some(4)).instruction(index)
+          val load = IR.Op
+            .Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value, Some(4))
+            .instruction(index)
           ExpressionGen(List(load), IR.Value.Local(index), entry.tpe)
         case AST.Expression.Plus(e1, e2) =>
           val gen1 = translateExpression(e1, symbols)

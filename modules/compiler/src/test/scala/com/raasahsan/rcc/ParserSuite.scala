@@ -35,9 +35,11 @@ class ParserSuite extends FunSuite {
   test("grouping") {
     val program = """
       int main() {
-        return (4 + 16) * (3 - 3) / 2;
+        return (4 + 16) * (3 + 3);
       }
     """
+    println(Parser.parse(program))
+    println(program.substring(18))
     assert(Parser.parse(program).isRight)
   }
 

@@ -57,7 +57,14 @@ object IR {
     // Memory operations
     case Alloca(tpe: Type, alignment: Option[Int])
     case Load(volatile: Boolean, tpe: Type, ptrTpe: Type, ptr: Value, alignment: Option[Int])
-    case Store(volatile: Boolean, tpe: Type, value: Value, ptrTpe: Type, ptr: Value, alignment: Option[Int])
+    case Store(
+        volatile: Boolean,
+        tpe: Type,
+        value: Value,
+        ptrTpe: Type,
+        ptr: Value,
+        alignment: Option[Int]
+    )
     case Getelementptr()
 
     // Conversion operations
