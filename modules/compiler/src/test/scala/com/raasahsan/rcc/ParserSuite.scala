@@ -38,8 +38,6 @@ class ParserSuite extends FunSuite {
         return (4 + 16) * (3 + 3);
       }
     """
-    println(Parser.parse(program))
-    println(program.substring(18))
     assert(Parser.parse(program).isRight)
   }
 
@@ -79,6 +77,16 @@ class ParserSuite extends FunSuite {
     val program = """
       int main() {
         return array[a + b];
+      }
+    """
+    assert(Parser.parse(program).isRight)
+  }
+
+  test("casting") {
+    val program = """
+      int main() {
+        int* a = (int*) 0x9000;
+        return 3;
       }
     """
     assert(Parser.parse(program).isRight)
