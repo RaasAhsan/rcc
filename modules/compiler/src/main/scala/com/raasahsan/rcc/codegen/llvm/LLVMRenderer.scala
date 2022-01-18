@@ -29,10 +29,12 @@ object LLVMRenderer {
       case Op.Alloca(tpe, align) => 
         val renderAlign = align.fold("")(a => s", align $a")
         s"alloca ${renderType(tpe)}$renderAlign"
-      case Op.Store(vol, tpe, value, ptrTpe, ptr) =>
-        s"store ${renderType(tpe)} ${renderValue(value)}, ${renderType(ptrTpe)} ${renderValue(ptr)}, align 4"
-      case Op.Load(vol, tpe, ptrTpe, ptr) =>
-        s"load ${renderType(tpe)}, ${renderType(ptrTpe)} ${renderValue(ptr)}, align 4"
+      case Op.Store(vol, tpe, value, ptrTpe, ptr, align) =>
+        val renderAlign = align.fold("")(a => s", align $a")
+        s"store ${renderType(tpe)} ${renderValue(value)}, ${renderType(ptrTpe)} ${renderValue(ptr)}$renderAlign"
+      case Op.Load(vol, tpe, ptrTpe, ptr, align) =>
+        val renderAlign = align.fold("")(a => s", align $a")
+        s"load ${renderType(tpe)}, ${renderType(ptrTpe)} ${renderValue(ptr)}$renderAlign"
     }
 
   def renderValue(v: Value): String =

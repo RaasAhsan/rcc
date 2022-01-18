@@ -84,7 +84,7 @@ object LLVMBackend {
                 case AST.Initializer.Expression(expr) =>
                   val gen = translateExpression(expr, acc.symbols)
                   val store = IR.Op
-                    .Store(false, gen.tpe, gen.value, IR.Type.Pointer(gen.tpe), localValue)
+                    .Store(false, gen.tpe, gen.value, IR.Type.Pointer(gen.tpe), localValue, Some(4))
                     .instruction
                   gen.code ++ List(store)
                 case _ => ???
@@ -116,7 +116,7 @@ object LLVMBackend {
         case AST.Expression.Identifier(ident) =>
           val entry = symbols.get(ident).get
           val index = nextLocal()
-          val load = IR.Op.Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value).instruction(index)
+          val load = IR.Op.Load(false, entry.tpe, IR.Type.Pointer(entry.tpe), entry.value, Some(4)).instruction(index)
           ExpressionGen(List(load), IR.Value.Local(index), entry.tpe)
         case AST.Expression.Plus(e1, e2) =>
           val gen1 = translateExpression(e1, symbols)

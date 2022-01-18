@@ -9,7 +9,9 @@ object Main {
   
     int main() {
       int x = 3;
-      return x;
+      int y = 5;
+      int z = x + y;
+      return z;
     }
   """
 
