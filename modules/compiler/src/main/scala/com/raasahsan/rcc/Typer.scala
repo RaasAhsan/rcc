@@ -168,6 +168,33 @@ object Typer {
             if (lt == rt && rt == Type.Int) Right(())
             else Left("Expected int on both sides of plus")
         } yield lt
+      case Expression.Minus(l, r) =>
+        for {
+          lt <- typeCheckExpression(l, ctx)
+          rt <- typeCheckExpression(r, ctx)
+          // TODO: + is valid for all arithmetic types
+          _ <-
+            if (lt == rt && rt == Type.Int) Right(())
+            else Left("Expected int on both sides of plus")
+        } yield lt
+      case Expression.Times(l, r) =>
+        for {
+          lt <- typeCheckExpression(l, ctx)
+          rt <- typeCheckExpression(r, ctx)
+          // TODO: + is valid for all arithmetic types
+          _ <-
+            if (lt == rt && rt == Type.Int) Right(())
+            else Left("Expected int on both sides of plus")
+        } yield lt
+      case Expression.Divide(l, r) =>
+        for {
+          lt <- typeCheckExpression(l, ctx)
+          rt <- typeCheckExpression(r, ctx)
+          // TODO: + is valid for all arithmetic types
+          _ <-
+            if (lt == rt && rt == Type.Int) Right(())
+            else Left("Expected int on both sides of plus")
+        } yield lt
       case Expression.Identifier(ident) =>
         ctx.get(ident).fold(Left(s"identifier $ident not found"))(Right(_))
       case Expression.Assignment(l, r) =>
