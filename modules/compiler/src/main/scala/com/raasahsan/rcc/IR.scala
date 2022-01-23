@@ -4,26 +4,28 @@ import cats.syntax.all._
 import cats.data.NonEmptyList
 import cats.data.Ior
 
-object AST {
+object IR {
   // The unit of program text after preprocessing is called a translation unit,
   // which consists of a sequence of external declarations.
-  final case class TranslationUnit(externalDeclarations: NonEmptyList[ExternalDeclaration])
+  final case class Module(moduleDeclarations: List[ModuleDeclaration])
 
-  enum ExternalDeclaration {
+  enum ModuleDeclaration {
     case FunctionDefinition(value: AST.FunctionDefinition)
     case Declaration(value: AST.Declaration)
   }
 
   final case class FunctionDefinition(
-      specifiers: Option[DeclarationSpecifiers],
-      declarator: Declarator,
-      declarationList: Option[DeclarationList],
-      statements: CompoundStatement
-  ) extends Typable {
-    def functionName: Option[Identifier] = declarator.functionName
-    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
-      declarator.functionParameters
-  }
+      // At most one storage class specifier can be provided in a declaration/function definition
+      storageClassSpecifier: Option[StorageClassSpecifier],
+      name: Identifier,
+      returnTpe: Type, // TODO: QualifiedType?
+      parameters: Option[List[FunctionParameter]],
+      block: Block
+  ) extends Typable
+
+  final case class FunctionParameter(tpe: Type, name: Identifier)
+
+  final case class Block(declarations: List[Declaration], statements: List[Statement])
 
   final case class DeclarationList(declarations: NonEmptyList[Declaration])
 
@@ -120,12 +122,7 @@ object AST {
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
       extends Typable
 
-  final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
-    def identifier: Option[Identifier] = directDeclarator.identifier
-    def functionName: Option[Identifier] = directDeclarator.functionName
-    def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
-      directDeclarator.functionParameters
-  }
+  final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator)
 
   final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
 

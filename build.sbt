@@ -1,7 +1,7 @@
 
 lazy val root = project
   .in(file("."))
-  .aggregate(cli, compiler, llvm)
+  .aggregate(cli, compiler)
 
 lazy val cli = project
   .in(file("modules/cli"))

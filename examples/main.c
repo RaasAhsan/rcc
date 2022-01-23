@@ -6,7 +6,7 @@ struct example {
 int foo3() {
     int z = 4;
     int* h = &z;
-    int b = *h;
+    int b = *(h + 3);
     return b;
 }
 

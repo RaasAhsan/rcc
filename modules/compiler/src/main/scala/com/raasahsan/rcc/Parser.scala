@@ -92,7 +92,7 @@ object Parser {
 
   def typeQualifier: P[TypeQualifier] =
     keyword("const").as(TypeQualifier.Const) |
-      keyword("static").as(TypeQualifier.Static)
+      keyword("volatile").as(TypeQualifier.Volatile)
 
   def declarator: P[Declarator] =
     (pointer.?.with1 ~ directDeclarator)
