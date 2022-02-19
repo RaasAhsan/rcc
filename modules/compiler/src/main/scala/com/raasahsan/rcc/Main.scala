@@ -56,12 +56,8 @@ object Main {
 
     val typed = Typer.typeCheck(ir)
     println(typed)
-
-    // val generator = new Generator
-    // val gen = generator.generateTranslationUnit(p)
-    // val render = Assembly.renderProgram(gen)
-
-    val module = LLVMBackend.translate(ir)
+    
+    val module = LLIRTranslation.translate(ir)
 
     println(module)
     val render = LLVMRenderer.render(module)

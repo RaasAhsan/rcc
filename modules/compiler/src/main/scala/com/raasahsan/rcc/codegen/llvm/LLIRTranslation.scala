@@ -4,7 +4,7 @@ import com.raasahsan.rcc.{IR, Type}
 
 import cats.syntax.all._
 
-object LLVMBackend {
+object LLIRTranslation {
 
   // For variables, value represents a pointer to a memory location representing tpe
   final case class IRSymbol(identifier: IR.Identifier, value: LLIR.Value, tpe: LLIR.Type)
@@ -46,7 +46,9 @@ object LLVMBackend {
                   gen.code ++ List(LLIR.Op.Ret(LLIR.Return.Value(gen.tpe, gen.value)).instruction)
                 case None => List(LLIR.Op.Ret(LLIR.Return.Void).instruction)
               }
+            case x => throw new RuntimeException(s"not implemented for $x")
           }
+        case x => throw new RuntimeException(s"not implemented for $x")
       }
 
     def translateBlock(
@@ -144,11 +146,11 @@ object LLVMBackend {
             case IR.Expression.Identifier(ident) =>
               val symbol = symbols.get(ident).get
               ExpressionGen(Nil, symbol.value, LLIR.Type.Pointer(symbol.tpe))
+            case x => throw new RuntimeException(s"not implemented for $x")
           }
         // TODO: make this more compositional
         // TODO: this doesn't work on *&var
         case IR.Expression.Dereference(rexpr) =>
-          val gen = translateExpression(rexpr, symbols)
           rexpr match {
             case IR.Expression.Identifier(ident) =>
               val symbol = symbols.get(ident).get
@@ -176,7 +178,9 @@ object LLVMBackend {
                 )
                 .instruction(derefLocal)
               ExpressionGen(List(l1, l2), LLIR.Value.Local(derefLocal), derefTpe)
+            case x => throw new RuntimeException(s"not implemented for $x")
           }
+        case x => throw new RuntimeException(s"not implemented for $x")
       }
     }
 

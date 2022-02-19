@@ -37,6 +37,7 @@ object LLVMRenderer {
       case Op.Load(vol, tpe, ptrTpe, ptr, align) =>
         val renderAlign = align.fold("")(a => s", align $a")
         s"load ${renderType(tpe)}, ${renderType(ptrTpe)} ${renderValue(ptr)}$renderAlign"
+      case _ => ???
     }
 
   def renderValue(v: Value): String =

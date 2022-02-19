@@ -20,6 +20,12 @@ lazy val compiler = project
     libraryDependencies ++= Seq(
       Dependencies.catsParse,
       Dependencies.osLib
+    ),
+    scalacOptions ++= Seq(
+      "-feature",
+      "-unchecked",
+      "-deprecation",
+      "-Xfatal-warnings"
     )
   )
   

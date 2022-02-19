@@ -17,6 +17,7 @@ object Typer {
             typeCheckFunctionDefinition(fd, ctx).map(tpe => ctx + (fd.name -> tpe))
           case ModuleDeclaration.Declaration(decl) =>
             typeCheckDeclaration(decl, ctx).map(tpe => ctx + (decl.name -> tpe))
+          case x => throw new RuntimeException(s"not implemented for $x")
         }
       }
 

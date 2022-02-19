@@ -11,12 +11,19 @@ $ nasm -felf64 hello.asm
 $ ld hello.o
 ```
 
+```
+$ docker run --rm -it -v $(pwd):/project -w /project --platform linux/amd64 rcc /bin/bash
+```
+
 ### LLVM
 ```
 $ llvm-as-13 simple.ll && \
     llc-13 simple.bc -o simple.s && \
     as -o simple.o simple.s && \
     ld -o simple -dynamic-linker /lib64/ld-linux-x86-64.so.2 /usr/lib/x86_64-linux-gnu/crt1.o /usr/lib/x86_64-linux-gnu/crti.o simple.o -lc /usr/lib/x86_64-linux-gnu/crtn.o
+
+$ gcc simple.s
+$ gcc simple.o
 ```
 
 ### Reference
