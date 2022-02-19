@@ -10,6 +10,8 @@ int foo3() {
     return b;
 }
 
+const int;
+
 int main() {
     int y = 4;
     struct example s = { 5, 4 };

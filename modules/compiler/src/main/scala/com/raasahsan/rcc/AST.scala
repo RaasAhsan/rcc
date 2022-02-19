@@ -138,7 +138,7 @@ object AST {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: Option[AST.Declarator])
   }
 
-  final case class Pointer(typeQualifiers: NonEmptyList[Option[TypeQualifierList]])
+  final case class Pointer(typeQualifiers: Option[TypeQualifierList], pointer: Option[Pointer])
 
   enum DirectDeclarator {
     case Identifier(value: AST.Identifier)

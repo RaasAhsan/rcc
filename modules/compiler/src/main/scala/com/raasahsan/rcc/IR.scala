@@ -47,8 +47,8 @@ object IR {
   }
 
   final case class CompoundStatement(
-      declarationList: List[Declaration],
-      statementList: List[Statement]
+      declarations: List[Declaration],
+      statements: List[Statement]
   )
 
   // Unconditional jump to another location in the program
@@ -60,8 +60,11 @@ object IR {
   }
 
   final case class Declaration(
-      specifiers: DeclarationSpecifiers,
-      initDeclarator: Option[InitDeclarator]
+      storageClass: Option[StorageClassSpecifier],
+      qualifiers: List[TypeQualifier],
+      name: Identifier,
+      tpe: Type,
+      initializer: Option[Initializer]
   )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
@@ -107,15 +110,10 @@ object IR {
     case TypedefName()
   }
 
-  final case class TypeQualifierList(qualifiers: NonEmptyList[TypeQualifier])
-
   enum TypeQualifier {
     case Const
     case Volatile
   }
-
-  final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
-      extends Typable
 
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator)
 
@@ -130,7 +128,7 @@ object IR {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: IR.Declarator)
   }
 
-  final case class Pointer(typeQualifiers: NonEmptyList[Option[TypeQualifierList]])
+  final case class Pointer(typeQualifiers: List[TypeQualifier], pointer: Option[Pointer])
 
   enum DirectDeclarator {
     case Identifier(value: IR.Identifier)
@@ -147,8 +145,6 @@ object IR {
   }
 
   final case class InitializerList(initializers: NonEmptyList[Initializer])
-
-  final case class ArgumentExpressionList(args: NonEmptyList[Expression])
 
   // TODO: eliminate this mutability in the future
   // limitations: impure, we may forget to attribute a type
@@ -168,15 +164,14 @@ object IR {
   object Expression {
     final case class Constant(constant: IR.Constant) extends Expression
     final case class Identifier(identifier: IR.Identifier) extends Expression
-    final case class StringLiteral(literal: IR.StringLiteral) extends Expression
+    final case class StringLiteral(literal: String) extends Expression
     final case class Assignment(lhs: Expression, rhs: Expression) extends Expression
     final case class Plus(lhs: Expression, rhs: Expression) extends Expression
     final case class Minus(lhs: Expression, rhs: Expression) extends Expression
     final case class Times(lhs: Expression, rhs: Expression) extends Expression
     final case class Divide(lhs: Expression, rhs: Expression) extends Expression
     final case class Modulo(lhs: Expression, rhs: Expression) extends Expression
-    final case class FunctionCall(lhs: Expression, args: Option[ArgumentExpressionList])
-        extends Expression
+    final case class FunctionCall(lhs: Expression, args: List[Expression]) extends Expression
     final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
     final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
@@ -200,7 +195,5 @@ object IR {
   enum Constant {
     case IntegerConstant(value: Int)
   }
-
-  final case class StringLiteral(value: String)
 
 }

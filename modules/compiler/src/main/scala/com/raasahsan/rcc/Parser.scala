@@ -113,8 +113,10 @@ object Parser {
   ).withContext("directDeclarator")
 
   def pointer: P[Pointer] =
-    (asterisk *> typeQualifierList.?).rep.map { qualifiers =>
-      Pointer(qualifiers)
+    P.recursive { recurse =>
+      (asterisk *> (typeQualifierList.? ~ recurse.?)).map { case (qualifiers, pointer) =>
+        Pointer(qualifiers, pointer)
+      }
     }
 
   // TODO: fix
