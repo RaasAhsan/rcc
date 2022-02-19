@@ -5,7 +5,7 @@ object LLIR {
   final case class Module(topLevelDeclarations: List[TopLevelDeclaration])
 
   enum TopLevelDeclaration {
-    case FunctionDefinition(fd: IR.FunctionDefinition)
+    case FunctionDefinition(fd: LLIR.FunctionDefinition)
   }
 
   enum Linkage {
@@ -48,8 +48,8 @@ object LLIR {
 
   enum Op {
     // Terminator instructions
-    case Ret(ret: IR.Return)
-    case Br(br: IR.Branch)
+    case Ret(ret: LLIR.Return)
+    case Br(br: LLIR.Branch)
 
     // Binary operations
     case Add(tpe: Type, op1: Value, op2: Value)
@@ -76,7 +76,7 @@ object LLIR {
 
   enum Return {
     case Void
-    case Value(tpe: Type, value: IR.Value)
+    case Value(tpe: Type, value: LLIR.Value)
   }
 
   enum Branch {

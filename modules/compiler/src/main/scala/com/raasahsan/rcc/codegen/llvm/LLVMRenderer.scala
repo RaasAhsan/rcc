@@ -2,9 +2,9 @@ package com.raasahsan.rcc.codegen.llvm
 
 object LLVMRenderer {
 
-  import IR._
+  import LLIR._
 
-  def render(module: IR.Module): String =
+  def render(module: Module): String =
     module.topLevelDeclarations
       .map { case TopLevelDeclaration.FunctionDefinition(fd) =>
         val args =

@@ -1,18 +1,19 @@
-package com.raasahsan.rcc
-package codegen.llvm
+package com.raasahsan.rcc.codegen.llvm
+
+import com.raasahsan.rcc.{IR, Type}
 
 import cats.syntax.all._
 
 object LLVMBackend {
 
   // For variables, value represents a pointer to a memory location representing tpe
-  final case class IRSymbol(identifier: AST.Identifier, value: LLIR.Value, tpe: LLIR.Type)
+  final case class IRSymbol(identifier: IR.Identifier, value: LLIR.Value, tpe: LLIR.Type)
 
   final case class ExpressionGen(code: List[LLIR.Instruction], value: LLIR.Value, tpe: LLIR.Type)
 
   def translate(module: IR.Module): LLIR.Module = {
     val topLevelDecls = module.moduleDeclarations.toList.collect {
-      case AST.ExternalDeclaration.FunctionDefinition(fd) =>
+      case IR.ModuleDeclaration.FunctionDefinition(fd) =>
         LLIR.TopLevelDeclaration.FunctionDefinition(translateFunctionDefinition(fd))
     }
 
@@ -28,17 +29,17 @@ object LLVMBackend {
     }
 
     def translateStatement(
-        stmt: AST.Statement,
-        symbols: Map[AST.Identifier, IRSymbol]
+        stmt: IR.Statement,
+        symbols: Map[IR.Identifier, IRSymbol]
     ): List[LLIR.Instruction] =
       stmt match {
-        case AST.Statement.Expression(expr) =>
+        case IR.Statement.Expression(expr) =>
           expr.expr.map(e => translateExpression(e, symbols).code).getOrElse(Nil)
-        case AST.Statement.Compound(compound) =>
-          translateCompoundStatement(compound, symbols)
-        case AST.Statement.Jump(jump) =>
+        case IR.Statement.Compound(block) =>
+          translateBlock(block, symbols)
+        case IR.Statement.Jump(jump) =>
           jump match {
-            case AST.JumpStatement.Return(ret) =>
+            case IR.JumpStatement.Return(ret) =>
               ret match {
                 case Some(e) =>
                   val gen = translateExpression(e, symbols)
@@ -48,17 +49,17 @@ object LLVMBackend {
           }
       }
 
-    def translateCompoundStatement(
-        stmt: AST.CompoundStatement,
-        symbols: Map[AST.Identifier, IRSymbol]
+    def translateBlock(
+        stmt: IR.Block,
+        symbols: Map[IR.Identifier, IRSymbol]
     ): List[LLIR.Instruction] = {
       final case class DeclarationState(
           instructions: List[LLIR.Instruction],
-          symbols: Map[AST.Identifier, IRSymbol]
+          symbols: Map[IR.Identifier, IRSymbol]
       ) {
         def addInstructions(ni: List[LLIR.Instruction]): DeclarationState =
           DeclarationState(instructions ++ ni, symbols)
-        def addSymbol(ident: AST.Identifier, symbol: IRSymbol): DeclarationState =
+        def addSymbol(ident: IR.Identifier, symbol: IRSymbol): DeclarationState =
           DeclarationState(instructions, symbols + (ident -> symbol))
       }
       object DeclarationState {
@@ -67,45 +68,40 @@ object LLVMBackend {
 
       // TODO: allocate all space for function at the same time (in all blocks)
 
-      val declState = stmt.declarationList
-        .map(_.declarations.toList)
-        .getOrElse(Nil)
+      val declState = stmt
+        .declarations
         .foldLeft(DeclarationState()) { case (acc, decl) =>
-          decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).foldLeft(acc) {
-            case (acc, initDecl) =>
-              val ident = initDecl.declarator.identifier.get
+          val ident = decl.name
 
-              // TODO: fix alignment
-              val localIndex = nextLocal()
-              val localValue = LLIR.Value.Local(localIndex)
-              val localTpe = translateType(initDecl.tpe.get)
-              val alloc =
-                LLIR.Op.Alloca(localTpe, Some(typeAlignment(localTpe))).instruction(localIndex)
+          // TODO: fix alignment
+          val localIndex = nextLocal()
+          val localValue = LLIR.Value.Local(localIndex)
+          val localTpe = translateType(decl.tpe)
+          val alloc =
+            LLIR.Op.Alloca(localTpe, Some(typeAlignment(localTpe))).instruction(localIndex)
 
-              val exprGen = initDecl.initializer.map {
-                case AST.Initializer.Expression(expr) =>
-                  val gen = translateExpression(expr, acc.symbols)
-                  val store = LLIR.Op
-                    .Store(
-                      false,
-                      gen.tpe,
-                      gen.value,
-                      LLIR.Type.Pointer(gen.tpe),
-                      localValue,
-                      Some(typeAlignment(gen.tpe))
-                    )
-                    .instruction
-                  gen.code ++ List(store)
-                case _ => ???
-              }
-              val symbol = IRSymbol(ident, localValue, localTpe)
-              acc.addInstructions(List(alloc) ++ exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
+          val exprGen = decl.initializer.map {
+            case IR.Initializer.Expression(expr) =>
+              val gen = translateExpression(expr, acc.symbols)
+              val store = LLIR.Op
+                .Store(
+                  false,
+                  gen.tpe,
+                  gen.value,
+                  LLIR.Type.Pointer(gen.tpe),
+                  localValue,
+                  Some(typeAlignment(gen.tpe))
+                )
+                .instruction
+              gen.code ++ List(store)
+            case _ => ???
           }
+          val symbol = IRSymbol(ident, localValue, localTpe)
+          acc.addInstructions(List(alloc) ++ exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
         }
 
-      val body = stmt.statementList
-        .map(_.statements.toList)
-        .getOrElse(Nil)
+      val body = stmt
+        .statements
         .map(stmt => translateStatement(stmt, declState.symbols))
         .combineAll
 
@@ -113,16 +109,16 @@ object LLVMBackend {
     }
 
     def translateExpression(
-        expr: AST.Expression,
-        symbols: Map[AST.Identifier, IRSymbol]
+        expr: IR.Expression,
+        symbols: Map[IR.Identifier, IRSymbol]
     ): ExpressionGen = {
       val exprTpe = translateType(expr.tpe.get)
       expr match {
-        case AST.Expression.Constant(c) =>
+        case IR.Expression.Constant(c) =>
           c match {
-            case AST.Constant.IntegerConstant(i) => ExpressionGen(Nil, LLIR.Value.Integer(i), exprTpe)
+            case IR.Constant.IntegerConstant(i) => ExpressionGen(Nil, LLIR.Value.Integer(i), exprTpe)
           }
-        case AST.Expression.Identifier(ident) =>
+        case IR.Expression.Identifier(ident) =>
           val entry = symbols.get(ident).get
           val index = nextLocal()
           val load = LLIR.Op
@@ -135,7 +131,7 @@ object LLVMBackend {
             )
             .instruction(index)
           ExpressionGen(List(load), LLIR.Value.Local(index), entry.tpe)
-        case AST.Expression.Plus(e1, e2) =>
+        case IR.Expression.Plus(e1, e2) =>
           val gen1 = translateExpression(e1, symbols)
           val gen2 = translateExpression(e2, symbols)
           val resultLocal = nextLocal()
@@ -143,18 +139,18 @@ object LLVMBackend {
           ExpressionGen(gen1.code ++ gen2.code ++ List(add), LLIR.Value.Local(resultLocal), exprTpe)
         // TODO: is it possible to express this as a compositional fold?
         // Note how a variable reference loads from the memory location, whereas a pointer just returns the value
-        case AST.Expression.Reference(rexpr) =>
+        case IR.Expression.Reference(rexpr) =>
           rexpr match {
-            case AST.Expression.Identifier(ident) =>
+            case IR.Expression.Identifier(ident) =>
               val symbol = symbols.get(ident).get
               ExpressionGen(Nil, symbol.value, LLIR.Type.Pointer(symbol.tpe))
           }
         // TODO: make this more compositional
         // TODO: this doesn't work on *&var
-        case AST.Expression.Dereference(rexpr) =>
+        case IR.Expression.Dereference(rexpr) =>
           val gen = translateExpression(rexpr, symbols)
           rexpr match {
-            case AST.Expression.Identifier(ident) =>
+            case IR.Expression.Identifier(ident) =>
               val symbol = symbols.get(ident).get
               // TODO: this needs to be consistent with symbol table
               val ptrTpe = translateType(rexpr.tpe.get)
@@ -184,28 +180,24 @@ object LLVMBackend {
       }
     }
 
-    val (ptes, rtpe) = fd.tpe.collect { case Type.Function(ptpes, rtpe) =>
-      ptpes -> rtpe
-    }.get
-    val argNamesAndTypes = fd.declarator.functionParameters.get.map(_._1).zip(ptes)
-    val irArguments = argNamesAndTypes.map(_._1).zip(ptes).map { (ident, tpe) =>
-      LLIR.FunctionArgument(translateType(tpe), Nil, Some(ident.value))
+    val irArguments = fd.parameters.get.map { p =>
+      LLIR.FunctionArgument(translateType(p.tpe), Nil, Some(p.name.value))
     }
-    val startingSymbols = argNamesAndTypes.map { (ident, tpe) =>
+    val startingSymbols = fd.parameters.get.map { p =>
       val index = nextLocal()
-      ident -> IRSymbol(ident, LLIR.Value.Local(index), translateType(tpe))
+      p.name -> IRSymbol(p.name, LLIR.Value.Local(index), translateType(p.tpe))
     }.toMap
     // arguments begin with %0, registers begin with %1
     if (local == -1) {
       local = 0
     }
-    val instructions = translateCompoundStatement(fd.statements, startingSymbols)
+    val instructions = translateBlock(fd.block, startingSymbols)
 
     LLIR.FunctionDefinition(
       None,
       None,
-      translateType(rtpe),
-      fd.declarator.functionName.get.value,
+      translateType(fd.returnTpe),
+      fd.name.value,
       irArguments,
       instructions
     )
