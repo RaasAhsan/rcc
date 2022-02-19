@@ -19,7 +19,7 @@ object AST {
       declarator: Declarator,
       declarationList: Option[DeclarationList],
       statements: CompoundStatement
-  ) extends Typable {
+  ) {
     def functionName: Option[Identifier] = declarator.functionName
     def functionParameters: Option[List[(Identifier, DeclarationSpecifiers)]] =
       declarator.functionParameters
@@ -118,7 +118,6 @@ object AST {
 
   // TODO: break apart Typable in our custom AST so the type is explicit
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
-      extends Typable
 
   final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator) {
     def identifier: Option[Identifier] = directDeclarator.identifier
@@ -185,18 +184,7 @@ object AST {
 
   final case class ArgumentExpressionList(args: NonEmptyList[Expression])
 
-  // TODO: eliminate this mutability in the future
-  // limitations: impure, we may forget to attribute a type
-  // ill-typed tree may yield a partially typed tree
-  // ideas:
-  // 1. duplicate tree AST with explicit typed expressions (guarantees type by construction)
-  // 2. Cofree for metadata
-  // 3. F[_] for metadata
-  trait Typable {
-    var tpe: Option[Type] = None
-  }
-
-  sealed trait Expression extends Typable
+  sealed trait Expression
 
   object Expression {
     final case class Constant(constant: AST.Constant) extends Expression

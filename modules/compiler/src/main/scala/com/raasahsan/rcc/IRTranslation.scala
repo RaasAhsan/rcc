@@ -82,7 +82,7 @@ object IRTranslation {
     stmt match {
       case AST.Statement.Compound(compound) =>
         IR.Statement.Compound(
-          IR.CompoundStatement(
+          IR.Block(
             compound.declarationList
               .map(_.declarations.toList)
               .getOrElse(Nil)

@@ -1,6 +1,6 @@
 package com.raasahsan.rcc.codegen.llvm
 
-object IR {
+object LLIR {
 
   final case class Module(topLevelDeclarations: List[TopLevelDeclaration])
 

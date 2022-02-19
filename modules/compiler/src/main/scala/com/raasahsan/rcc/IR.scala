@@ -31,7 +31,7 @@ object IR {
 
   enum Statement {
     case Labeled(stmt: LabeledStatement)
-    case Compound(stmt: CompoundStatement)
+    case Compound(block: Block)
     case Expression(stmt: ExpressionStatement)
     case Selection(stmt: SelectionStatement)
     case Iteration()
@@ -45,11 +45,6 @@ object IR {
   enum SelectionStatement {
     case If(condition: Expression, consequent: Statement, alternative: Option[Statement])
   }
-
-  final case class CompoundStatement(
-      declarations: List[Declaration],
-      statements: List[Statement]
-  )
 
   // Unconditional jump to another location in the program
   enum JumpStatement {

@@ -5,124 +5,62 @@ import cats.syntax.all._
 // TODO: only typing semantics or other semantics here? like unique declarations
 object Typer {
 
-  import AST._
+  import IR._
 
   type TypingContext = Map[Identifier, Type]
 
-  def typeCheck(unit: TranslationUnit): Either[String, TypingContext] =
-    unit.externalDeclarations.toList
+  def typeCheck(m: Module): Either[String, TypingContext] =
+    m.moduleDeclarations.toList
       .foldLeftM(Map[Identifier, Type]()) { case (ctx, ed) =>
         ed match {
-          case ExternalDeclaration.FunctionDefinition(fd) =>
-            typeCheckFunctionDefinition(fd, ctx)
-          case ExternalDeclaration.Declaration(decl) =>
-            typeCheckDeclaration(decl, ctx)
+          case ModuleDeclaration.FunctionDefinition(fd) =>
+            typeCheckFunctionDefinition(fd, ctx).map(tpe => ctx + (fd.name -> tpe))
+          case ModuleDeclaration.Declaration(decl) =>
+            typeCheckDeclaration(decl, ctx).map(tpe => ctx + (decl.name -> tpe))
         }
       }
 
   def typeCheckFunctionDefinition(
       fd: FunctionDefinition,
       ctx: Map[Identifier, Type]
-  ): Either[String, TypingContext] =
+  ): Either[String, Type] =
     for {
-      baseReturnTpe <- fd.specifiers.flatMap(specifiersToType).fold(Left("no type found"))(Right(_))
-      returnTpe = typePointer(baseReturnTpe, fd.declarator.pointer)
-      // TODO: improve this
-      ident <- fd.functionName.fold(Left("no function name"))(Right(_))
-      params <- fd.functionParameters.fold(Left("no function parameters"))(Right(_))
-      argTpes <- params.traverse { case (ident, specifiers) =>
-        specifiersToType(specifiers)
-          .map(tpe => ident -> tpe)
-          .fold(Left("no argument type found"))(Right(_))
-      }
-      innerCtx1 = ctx ++ argTpes.toMap
-      innerCtx2 <- fd.declarationList.fold(Right(innerCtx1))(decls =>
-        typeCheckDeclarations(decls, innerCtx1)
-      )
-      _ <- typeCheckStatement(Statement.Compound(fd.statements), innerCtx2)
+      params <- fd.parameters.fold(Left("no function parameters"))(Right(_))
+      paramTpes = params.map { p => p.name -> p.tpe }
+      _ <- typeCheckBlock(fd.block, ctx ++ paramTpes.toMap)
     } yield {
-      val tpe = Type.Function(argTpes.map(_._2), returnTpe)
+      val tpe = Type.Function(paramTpes.map(_._2), fd.returnTpe)
       fd.tpe = Some(tpe)
-      ctx + (ident -> tpe)
+      tpe
     }
 
-  def typeCheckDeclarations(
-      decls: DeclarationList,
-      ctx: Map[Identifier, Type]
-  ): Either[String, TypingContext] =
-    decls.declarations.toList.foldLeftM(ctx) { (acc, decl) =>
-      typeCheckDeclaration(decl, acc)
-    }
-
-  // TODO: Option is just nice for composability
-  def typeCheckStatements(
-      stmts: StatementList,
-      ctx: Map[Identifier, Type]
-  ): Either[String, TypingContext] =
-    stmts.statements.toList.foldLeftM(ctx) { (acc, stmt) =>
-      typeCheckStatement(stmt, acc)
-    }
+  def typeCheckBlock(block: Block, ctx: Map[Identifier, Type]): Either[String, Unit] =
+    for {
+      ctx2 <- block.declarations.foldLeftM(ctx) { (ctx, decl) =>
+        typeCheckDeclaration(decl, ctx).map(tpe => ctx + (decl.name -> tpe))
+      }
+      _ <- block.statements.traverse(stmt => typeCheckStatement(stmt, ctx2))
+    } yield ()
 
   // TODO: this only works for block-level declarations, not functions?
-  def typeCheckDeclaration(decl: Declaration, ctx: TypingContext): Either[String, TypingContext] =
+  def typeCheckDeclaration(decl: Declaration, ctx: TypingContext): Either[String, Type] =
     for {
-      baseTpe <- specifiersToType(decl.specifiers).fold(Left("no type found via specifiers"))(
-        Right(_)
-      )
-      nextCtx <- decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).foldLeftM(ctx) {
-        (acc, init) =>
-          val tpe = init.declarator.pointer.map(_ => Type.Pointer(baseTpe)).getOrElse(baseTpe)
-          // TODO: a declaration declares an identifier at most ONCE
-
-          val nextTpe = init.declarator.directDeclarator match {
-            case DirectDeclarator.Identifier(ident) =>
-              init.initializer match {
-                case Some(Initializer.Expression(expr)) =>
-                  typeCheckExpression(expr, ctx).flatMap { itpe =>
-                    if (itpe == tpe) Right(ident -> tpe)
-                    else Left("Initializer types did not match")
-                  }
-                case _ => Right(ident -> tpe)
-              }
-            case DirectDeclarator.FunctionDeclarator(decl, params) =>
-              for {
-                ident <- decl.identifier.fold(Left("ident not found"))(Right(_))
-                paramTypes <- params.parameterList.parameters.toList
-                  .map { case ParameterDeclaration.Declarator(specs, decl) =>
-                    specs -> decl.get.pointer
-                  }
-                  .traverse { case (specifiers, pointer) =>
-                    specifiersToType(specifiers)
-                      .fold(Left("no argument type found"))(Right(_))
-                      .map(tpe => pointer.map(_ => Type.Pointer(tpe)).getOrElse(tpe))
-                  }
-              } yield ident -> Type.Function(paramTypes, tpe)
-            case _ => Left("unknown declaration")
-          }
-
-          init.tpe = nextTpe.toOption.map(_._2)
-
-          nextTpe.map { mapping =>
-            ctx + mapping
-          }
+      _ <- decl.initializer match {
+        case Some(Initializer.Expression(expr)) =>
+          typeCheckExpression(expr, ctx).flatMap(tpe => if (tpe == decl.tpe) Right(()) else Left("declaration types and initializer type are not equal"))
+        // TODO: Initializers
+        case _ => Right(())
       }
-    } yield nextCtx
+    } yield decl.tpe
 
-  def typeCheckStatement(stmt: Statement, ctx: TypingContext): Either[String, TypingContext] =
+  def typeCheckStatement(stmt: Statement, ctx: TypingContext): Either[String, Unit] =
     stmt match {
-      case Statement.Compound(compound) =>
-        for {
-          ctx1 <- compound.declarationList.fold(Right(ctx)) { decls =>
-            typeCheckDeclarations(decls, ctx)
-          }
-          _ <- compound.statementList.fold(Right(ctx1)) { statements =>
-            typeCheckStatements(statements, ctx1)
-          }
-        } yield ctx
+      case Statement.Compound(block) =>
+        typeCheckBlock(block, ctx)
       case Statement.Expression(expr) =>
         expr.expr match {
-          case Some(e) => typeCheckExpression(e, ctx).as(ctx)
-          case None    => Right(ctx)
+          case Some(e) => typeCheckExpression(e, ctx).void
+          case None    => Right(())
         }
       case Statement.Selection(select) =>
         select match {
@@ -135,17 +73,16 @@ object Typer {
                 case Some(stmt) => typeCheckStatement(stmt, ctx)
                 case None       => Right(())
               }
-            } yield ctx
+            } yield ()
         }
       case Statement.Jump(jump) =>
         jump match {
           case JumpStatement.Return(ret) =>
             // TODO: match return type of function with type here
-            val res = ret match {
-              case Some(expr) => typeCheckExpression(expr, ctx)
-              case None       => Right(Type.Void)
+            ret match {
+              case Some(expr) => typeCheckExpression(expr, ctx).void
+              case None       => Right(())
             }
-            res.as(ctx)
           case _ => ???
         }
       case _ => ???
@@ -210,10 +147,7 @@ object Typer {
             case Type.Function(pts, rt) => Right(pts -> rt)
             case _                      => Left("function type expected")
           }
-          paramTypes <- args
-            .map(_.args.toList)
-            .getOrElse(Nil)
-            .traverse(expr => typeCheckExpression(expr, ctx))
+          paramTypes <- args.traverse(expr => typeCheckExpression(expr, ctx))
           _ <-
             if (paramTypes == fty._1) Right(())
             else Left("function type and arguments do not match")
