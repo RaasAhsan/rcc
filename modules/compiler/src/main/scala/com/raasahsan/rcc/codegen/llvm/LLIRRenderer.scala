@@ -1,6 +1,6 @@
 package com.raasahsan.rcc.codegen.llvm
 
-object LLVMRenderer {
+object LLIRRenderer {
 
   import LLIR._
 

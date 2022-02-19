@@ -110,27 +110,7 @@ object IR {
     case Volatile
   }
 
-  final case class Declarator(pointer: Option[Pointer], directDeclarator: DirectDeclarator)
-
-  final case class ParameterTypeList(parameterList: ParameterList, repeated: Boolean)
-
-  final case class ParameterList(parameters: NonEmptyList[ParameterDeclaration])
-
-  final case class IdentifierList(identifiers: NonEmptyList[Identifier])
-
-  // TODO: abstract declarator
-  enum ParameterDeclaration {
-    case Declarator(specifiers: DeclarationSpecifiers, declarator: IR.Declarator)
-  }
-
   final case class Pointer(typeQualifiers: List[TypeQualifier], pointer: Option[Pointer])
-
-  enum DirectDeclarator {
-    case Identifier(value: IR.Identifier)
-    case Declarator(value: IR.Declarator)
-    case FunctionDeclarator(decl: DirectDeclarator, parameterTypeList: ParameterTypeList)
-    case Identifiers(decl: DirectDeclarator, identifiers: Option[IdentifierList])
-  }
 
   final case class Identifier(value: String)
 

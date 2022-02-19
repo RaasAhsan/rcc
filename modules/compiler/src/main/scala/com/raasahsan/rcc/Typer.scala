@@ -48,7 +48,10 @@ object Typer {
     for {
       _ <- decl.initializer match {
         case Some(Initializer.Expression(expr)) =>
-          typeCheckExpression(expr, ctx).flatMap(tpe => if (tpe == decl.tpe) Right(()) else Left("declaration types and initializer type are not equal"))
+          typeCheckExpression(expr, ctx).flatMap(tpe =>
+            if (tpe == decl.tpe) Right(())
+            else Left("declaration types and initializer type are not equal")
+          )
         // TODO: Initializers
         case _ => Right(())
       }

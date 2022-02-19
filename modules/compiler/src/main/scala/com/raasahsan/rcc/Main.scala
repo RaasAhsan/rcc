@@ -56,11 +56,11 @@ object Main {
 
     val typed = Typer.typeCheck(ir)
     println(typed)
-    
+
     val module = LLIRTranslation.translate(ir)
 
     println(module)
-    val render = LLVMRenderer.render(module)
+    val render = LLIRRenderer.render(module)
 
     val outDir = os.pwd / "examples"
     os.write.over(outDir / "simple.ll", render)

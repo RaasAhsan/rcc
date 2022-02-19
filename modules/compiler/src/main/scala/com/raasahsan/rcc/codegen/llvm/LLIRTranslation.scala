@@ -70,8 +70,7 @@ object LLIRTranslation {
 
       // TODO: allocate all space for function at the same time (in all blocks)
 
-      val declState = stmt
-        .declarations
+      val declState = stmt.declarations
         .foldLeft(DeclarationState()) { case (acc, decl) =>
           val ident = decl.name
 
@@ -102,8 +101,7 @@ object LLIRTranslation {
           acc.addInstructions(List(alloc) ++ exprGen.getOrElse(Nil)).addSymbol(ident, symbol)
         }
 
-      val body = stmt
-        .statements
+      val body = stmt.statements
         .map(stmt => translateStatement(stmt, declState.symbols))
         .combineAll
 
@@ -118,7 +116,8 @@ object LLIRTranslation {
       expr match {
         case IR.Expression.Constant(c) =>
           c match {
-            case IR.Constant.IntegerConstant(i) => ExpressionGen(Nil, LLIR.Value.Integer(i), exprTpe)
+            case IR.Constant.IntegerConstant(i) =>
+              ExpressionGen(Nil, LLIR.Value.Integer(i), exprTpe)
           }
         case IR.Expression.Identifier(ident) =>
           val entry = symbols.get(ident).get
@@ -219,7 +218,7 @@ object LLIRTranslation {
     tpe match {
       case LLIR.Type.Integer(bits) => bits / 8
       case LLIR.Type.Pointer(_)    => 8
-      case _                     => ???
+      case _                       => ???
     }
 
 }
