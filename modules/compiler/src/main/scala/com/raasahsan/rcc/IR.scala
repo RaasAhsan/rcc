@@ -2,7 +2,6 @@ package com.raasahsan.rcc
 
 import cats.syntax.all._
 import cats.data.NonEmptyList
-import cats.data.Ior
 
 object IR {
   // The unit of program text after preprocessing is called a translation unit,
@@ -10,13 +9,16 @@ object IR {
   final case class Module(moduleDeclarations: List[ModuleDeclaration])
 
   enum ModuleDeclaration {
-    case FunctionDefinition(value: AST.FunctionDefinition)
-    case Declaration(value: AST.Declaration)
+    case FunctionDefinition(value: IR.FunctionDefinition)
+    case FunctionDeclaration(value: IR.FunctionDeclaration)
+    case Declaration(value: IR.Declaration)
   }
+
+  final case class FunctionDeclaration()
 
   final case class FunctionDefinition(
       // At most one storage class specifier can be provided in a declaration/function definition
-      storageClassSpecifier: Option[StorageClassSpecifier],
+      storageClass: Option[StorageClassSpecifier],
       name: Identifier,
       returnTpe: Type, // TODO: QualifiedType?
       parameters: Option[List[FunctionParameter]],
@@ -26,10 +28,6 @@ object IR {
   final case class FunctionParameter(tpe: Type, name: Identifier)
 
   final case class Block(declarations: List[Declaration], statements: List[Statement])
-
-  final case class DeclarationList(declarations: NonEmptyList[Declaration])
-
-  final case class StatementList(statements: NonEmptyList[Statement])
 
   enum Statement {
     case Labeled(stmt: LabeledStatement)
@@ -49,8 +47,8 @@ object IR {
   }
 
   final case class CompoundStatement(
-      declarationList: Option[DeclarationList],
-      statementList: Option[StatementList]
+      declarationList: List[Declaration],
+      statementList: List[Statement]
   )
 
   // Unconditional jump to another location in the program
@@ -63,15 +61,15 @@ object IR {
 
   final case class Declaration(
       specifiers: DeclarationSpecifiers,
-      initDeclaratorList: Option[InitDeclaratorList]
+      initDeclarator: Option[InitDeclarator]
   )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
 
   enum DeclarationSpecifier {
-    case StorageClassSpecifier(value: AST.StorageClassSpecifier)
-    case TypeSpecifier(value: AST.TypeSpecifier)
-    case TypeQualifier(value: AST.TypeQualifier)
+    case StorageClassSpecifier(value: IR.StorageClassSpecifier)
+    case TypeSpecifier(value: IR.TypeSpecifier)
+    case TypeQualifier(value: IR.TypeQualifier)
   }
 
   final case class TypeName(
@@ -116,9 +114,6 @@ object IR {
     case Volatile
   }
 
-  final case class InitDeclaratorList(declarators: NonEmptyList[InitDeclarator])
-
-  // TODO: break apart Typable in our custom AST so the type is explicit
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
       extends Typable
 
@@ -132,49 +127,22 @@ object IR {
 
   // TODO: abstract declarator
   enum ParameterDeclaration {
-    case Declarator(specifiers: DeclarationSpecifiers, declarator: AST.Declarator)
+    case Declarator(specifiers: DeclarationSpecifiers, declarator: IR.Declarator)
   }
 
   final case class Pointer(typeQualifiers: NonEmptyList[Option[TypeQualifierList]])
 
   enum DirectDeclarator {
-    case Identifier(value: AST.Identifier)
-    case Declarator(value: AST.Declarator)
+    case Identifier(value: IR.Identifier)
+    case Declarator(value: IR.Declarator)
     case FunctionDeclarator(decl: DirectDeclarator, parameterTypeList: ParameterTypeList)
     case Identifiers(decl: DirectDeclarator, identifiers: Option[IdentifierList])
-
-    def identifier: Option[AST.Identifier] =
-      this match {
-        case DirectDeclarator.Identifier(i) => Some(i)
-        case _                              => None
-      }
-
-    // TODO: This can probably be merged with functionParameters
-    def functionName: Option[AST.Identifier] =
-      this match {
-        case DirectDeclarator.FunctionDeclarator(decl, _) =>
-          decl.identifier
-        case DirectDeclarator.Identifiers(decl, _) =>
-          decl.identifier
-        case _ => None
-      }
-
-    def functionParameters: Option[List[(AST.Identifier, DeclarationSpecifiers)]] =
-      this match {
-        case FunctionDeclarator(_, params) =>
-          params.parameterList.parameters.toList.map {
-            case ParameterDeclaration.Declarator(specs, decl) =>
-              decl.identifier.get -> specs
-          }.some
-        case Identifiers(_, None) => Some(Nil)
-        case _                    => None
-      }
   }
 
   final case class Identifier(value: String)
 
   enum Initializer {
-    case Expression(expression: AST.Expression)
+    case Expression(expression: IR.Expression)
     case Initializers(initializers: InitializerList)
   }
 
@@ -193,12 +161,14 @@ object IR {
     var tpe: Option[Type] = None
   }
 
+  // This Expression AST doesn't reflect the formal grammar of C,
+  // however we are flattening it here for simplicity
   sealed trait Expression extends Typable
 
   object Expression {
-    final case class Constant(constant: AST.Constant) extends Expression
-    final case class Identifier(identifier: AST.Identifier) extends Expression
-    final case class StringLiteral(literal: AST.StringLiteral) extends Expression
+    final case class Constant(constant: IR.Constant) extends Expression
+    final case class Identifier(identifier: IR.Identifier) extends Expression
+    final case class StringLiteral(literal: IR.StringLiteral) extends Expression
     final case class Assignment(lhs: Expression, rhs: Expression) extends Expression
     final case class Plus(lhs: Expression, rhs: Expression) extends Expression
     final case class Minus(lhs: Expression, rhs: Expression) extends Expression

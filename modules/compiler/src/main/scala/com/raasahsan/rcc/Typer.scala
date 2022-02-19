@@ -89,7 +89,7 @@ object Typer {
                 ident <- decl.identifier.fold(Left("ident not found"))(Right(_))
                 paramTypes <- params.parameterList.parameters.toList
                   .map { case ParameterDeclaration.Declarator(specs, decl) =>
-                    specs -> decl.pointer
+                    specs -> decl.get.pointer
                   }
                   .traverse { case (specifiers, pointer) =>
                     specifiersToType(specifiers)

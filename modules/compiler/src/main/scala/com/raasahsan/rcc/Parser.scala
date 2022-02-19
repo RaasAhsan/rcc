@@ -124,8 +124,9 @@ object Parser {
   def parameterList: P[ParameterList] =
     parameterDeclaration.repSep(comma).map(ParameterList(_))
 
+  // TODO: abstract declarator is necessary here
   def parameterDeclaration: P[ParameterDeclaration] =
-    (declarationSpecifiers ~ declarator).map { (specifiers, declarator) =>
+    (declarationSpecifiers ~ declarator.?).map { (specifiers, declarator) =>
       ParameterDeclaration.Declarator(specifiers, declarator)
     }
 

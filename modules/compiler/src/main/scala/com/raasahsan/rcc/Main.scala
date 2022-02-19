@@ -50,6 +50,10 @@ object Main {
     println(result)
 
     val p = result.toOption.get
+
+    val ir = IRTranslation.translateTranslationUnit(p)
+    println(ir)
+
     val typed = Typer.typeCheck(p)
     println(typed)
 

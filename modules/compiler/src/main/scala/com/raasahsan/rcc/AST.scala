@@ -135,7 +135,7 @@ object AST {
 
   // TODO: abstract declarator
   enum ParameterDeclaration {
-    case Declarator(specifiers: DeclarationSpecifiers, declarator: AST.Declarator)
+    case Declarator(specifiers: DeclarationSpecifiers, declarator: Option[AST.Declarator])
   }
 
   final case class Pointer(typeQualifiers: NonEmptyList[Option[TypeQualifierList]])
@@ -167,7 +167,7 @@ object AST {
         case FunctionDeclarator(_, params) =>
           params.parameterList.parameters.toList.map {
             case ParameterDeclaration.Declarator(specs, decl) =>
-              decl.identifier.get -> specs
+              decl.get.identifier.get -> specs
           }.some
         case Identifiers(_, None) => Some(Nil)
         case _                    => None
