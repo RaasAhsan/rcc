@@ -1,6 +1,7 @@
 package com.raasahsan.rcc
 
 import munit.FunSuite
+import cats.data.NonEmptyList
 
 class TyperSuite extends FunSuite {
 
@@ -37,6 +38,19 @@ class TyperSuite extends FunSuite {
     )
     assertEquals(
       typeCheckExpression(expr, Map()),
+      Right(Type.Int)
+    )
+  }
+
+  test("assignment of const-qualified variable to unqualified variable") {
+    assertEquals(
+      typeCheckExpression(
+        Expression.Assignment(Expression.Identifier(Identifier("x")), Expression.Identifier(Identifier("y"))),
+        Map(
+          Identifier("x") -> Type.Int,
+          Identifier("y") -> Type.Qualified(Type.Int, NonEmptyList.one(TypeQualifier.Const))
+        )
+      ),
       Right(Type.Int)
     )
   }

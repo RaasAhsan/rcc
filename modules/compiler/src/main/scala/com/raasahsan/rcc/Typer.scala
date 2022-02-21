@@ -181,10 +181,12 @@ object Typer {
         } yield castTpe
       case x => Left(s"invalid expression $x")
     }
+    // $3.2.2.1: the type of an lvalue expression is the unqualified version of the type of the lvalue
+    val unqualifiedTpe = tpe.map(_.unqualified)
 
-    expr.tpe = tpe.toOption
+    expr.tpe = unqualifiedTpe.toOption
 
-    tpe
+    unqualifiedTpe
   }
 
   def compatibleCast(source: Type, target: Type): Either[String, Unit] =
