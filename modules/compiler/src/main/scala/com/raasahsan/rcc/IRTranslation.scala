@@ -1,5 +1,7 @@
 package com.raasahsan.rcc
 
+import cats.syntax.all._
+
 // Performs a translation between the C syntax tree and the
 // RCC internal representation.
 // This translation performs some significant operations in order to simplify
@@ -225,10 +227,10 @@ object IRTranslation {
   private def extractTypeFromDeclaration(
       specifiers: AST.DeclarationSpecifiers,
       declarator: AST.Declarator
-  ): Option[Type] = {
+  ): Option[IR.Type] = {
     val baseTpe = extractTypeFromSpecifiers(specifiers)
     // TODO: multiple pointer nestings
-    baseTpe.map(tpe => declarator.pointer.fold(tpe)(_ => Type.Pointer(tpe)))
+    baseTpe.map(tpe => declarator.pointer.fold(tpe)(_ => IR.Type.Pointer(tpe)))
   }
 
   private def extractStorageClass(
@@ -238,18 +240,26 @@ object IRTranslation {
       case AST.DeclarationSpecifier.StorageClassSpecifier(sc) => sc
     }.headOption
 
-  private val specifierMapping: Map[Set[AST.TypeSpecifier], Type] = Map(
-    Set(AST.TypeSpecifier.Int) -> Type.Int,
-    Set(AST.TypeSpecifier.Char) -> Type.Char,
-    Set(AST.TypeSpecifier.Unsigned, AST.TypeSpecifier.Int) -> Type.UnsignedInt
+  private val specifierMapping: Map[Set[AST.TypeSpecifier], IR.Type] = Map(
+    Set(AST.TypeSpecifier.Int) -> IR.Type.Int,
+    Set(AST.TypeSpecifier.Char) -> IR.Type.Char,
+    Set(AST.TypeSpecifier.Unsigned, AST.TypeSpecifier.Int) -> IR.Type.UnsignedInt
   )
 
   // TODO: qualified types?
-  private def extractTypeFromSpecifiers(specifiers: AST.DeclarationSpecifiers): Option[Type] = {
+  private def extractTypeFromSpecifiers(specifiers: AST.DeclarationSpecifiers): Option[IR.Type] = {
     val typeSpecifiers = specifiers.specifiers.toList.collect {
       case AST.DeclarationSpecifier.TypeSpecifier(ts) => ts
     }.toSet
-    specifierMapping.get(typeSpecifiers)
+    val typeQualifiers = specifiers.specifiers.toList.collect {
+      case AST.DeclarationSpecifier.TypeQualifier(tq) => tq
+    }.map(translateTypeQualifier).toNel
+    specifierMapping.get(typeSpecifiers).map { unqualified =>
+      typeQualifiers match {
+        case Some(qs) => IR.Type.Qualified(unqualified, qs)
+        case None => unqualified
+      }
+    }
   }
 
 }

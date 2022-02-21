@@ -210,13 +210,6 @@ object Typer {
   def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
     pointer.fold(tpe)(_ => Type.Pointer(tpe))
 
-  def specifiersToType(specifiers: DeclarationSpecifiers): Option[Type] = {
-    val key = specifiers.specifiers.toList.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>
-      ts
-    }.toSet
-    specifierMapping.get(key)
-  }
-
   def typeNameToType(typeName: TypeName): Option[Type] = {
     val key = typeName.specifierQualifiers.toList.collect {
       case TypeSpecifierOrQualifier.Specifier(s) => s

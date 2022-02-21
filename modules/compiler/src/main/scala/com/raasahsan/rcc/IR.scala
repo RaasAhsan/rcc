@@ -1,7 +1,7 @@
 package com.raasahsan.rcc
 
 import cats.syntax.all._
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 
 object IR {
   // The unit of program text after preprocessing is called a translation unit,
@@ -62,14 +62,6 @@ object IR {
       initializer: Option[Initializer]
   )
 
-  final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
-
-  enum DeclarationSpecifier {
-    case StorageClassSpecifier(value: IR.StorageClassSpecifier)
-    case TypeSpecifier(value: IR.TypeSpecifier)
-    case TypeQualifier(value: IR.TypeQualifier)
-  }
-
   final case class TypeName(
       specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier],
       abstractDeclarator: Option[AbstractDeclarator]
@@ -103,11 +95,6 @@ object IR {
     case StructOrUnion()
     case Enum()
     case TypedefName()
-  }
-
-  enum TypeQualifier {
-    case Const
-    case Volatile
   }
 
   final case class Pointer(typeQualifiers: List[TypeQualifier], pointer: Option[Pointer])
@@ -169,6 +156,40 @@ object IR {
 
   enum Constant {
     case IntegerConstant(value: Int)
+  }
+
+  // TODO: struct, union, typedef / user-defined types?
+  enum Type {
+    case Void
+    case Char
+    case SignedChar
+    case UnsignedChar
+    case Short
+    case Int
+    case UnsignedInt
+    case Long
+    case UnsignedLong
+    case Float
+    case Double
+    case LongDouble
+
+    case Array(base: Type)
+
+    case Pointer(base: Type)
+    case Function(params: List[Type], returnType: Type)
+
+    case Qualified(base: Type, qualifiers: NonEmptyList[TypeQualifier])
+
+    def unqualified: Type = 
+      this match {
+        case Qualified(base, _) => base
+        case x => x
+      }
+  }
+
+  enum TypeQualifier {
+    case Const
+    case Volatile
   }
 
 }

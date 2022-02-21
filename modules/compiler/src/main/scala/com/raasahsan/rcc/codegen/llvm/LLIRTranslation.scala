@@ -1,6 +1,6 @@
 package com.raasahsan.rcc.codegen.llvm
 
-import com.raasahsan.rcc.{IR, Type}
+import com.raasahsan.rcc.IR
 
 import cats.syntax.all._
 
@@ -206,10 +206,10 @@ object LLIRTranslation {
     )
   }
 
-  def translateType(tpe: Type): LLIR.Type =
+  def translateType(tpe: IR.Type): LLIR.Type =
     tpe match {
-      case Type.Int          => LLIR.Type.Integer(32)
-      case Type.Pointer(tpe) => LLIR.Type.Pointer(translateType(tpe))
+      case IR.Type.Int          => LLIR.Type.Integer(32)
+      case IR.Type.Pointer(tpe) => LLIR.Type.Pointer(translateType(tpe))
       case _                 => ???
     }
 

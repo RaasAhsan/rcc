@@ -10,9 +10,14 @@ int foo3() {
     return b;
 }
 
-const int;
+int x;
+
+int bar(const int y) {
+
+}
 
 int main() {
+    bar(x);
     int y = 4;
     struct example s = { 5, 4 };
     unsigned char* ptr = (unsigned char*) 0xb8000;
