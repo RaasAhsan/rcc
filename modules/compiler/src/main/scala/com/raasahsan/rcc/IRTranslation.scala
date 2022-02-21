@@ -224,11 +224,48 @@ object IRTranslation {
       case AST.DeclarationSpecifier.StorageClassSpecifier(sc) => sc
     }.headOption
 
-  private val specifierMapping: Map[Set[AST.TypeSpecifier], IR.Type] = Map(
-    Set(AST.TypeSpecifier.Int) -> IR.Type.Int,
-    Set(AST.TypeSpecifier.Char) -> IR.Type.Char,
-    Set(AST.TypeSpecifier.Unsigned, AST.TypeSpecifier.Int) -> IR.Type.UnsignedInt
-  )
+  private val specifierMapping: Map[Set[AST.TypeSpecifier], IR.Type] = {
+    import AST.TypeSpecifier._
+    Map(
+      Set(Void) -> IR.Type.Void,
+
+      Set(Char) -> IR.Type.Char,
+      
+      Set(Signed, Char) -> IR.Type.SignedChar,
+      
+      Set(Unsigned, Char) -> IR.Type.UnsignedChar,
+
+      Set(Short) -> IR.Type.Short,
+      Set(Signed, Short) -> IR.Type.Short,
+      Set(Short, Int) -> IR.Type.Short,
+      Set(Signed, Short, Int) -> IR.Type.Short,
+      
+      Set(Unsigned, Short) -> IR.Type.UnsignedShort,
+      Set(Unsigned, Short, Int) -> IR.Type.UnsignedShort,
+
+      Set(Int) -> IR.Type.Int,
+      Set(Signed) -> IR.Type.Int,
+      Set(Signed, Int) -> IR.Type.Int,
+      Set() -> IR.Type.Int,
+
+      Set(Unsigned) -> IR.Type.UnsignedInt,
+      Set(Unsigned, Int) -> IR.Type.UnsignedInt,
+
+      Set(Long) -> IR.Type.Long,
+      Set(Signed, Long) -> IR.Type.Long,
+      Set(Long, Int) -> IR.Type.Long,
+      Set(Signed, Long, Int) -> IR.Type.Long,
+
+      Set(Unsigned, Long) -> IR.Type.UnsignedLong,
+      Set(Unsigned, Long, Int) -> IR.Type.UnsignedLong,
+
+      Set(Float) -> IR.Type.Float,
+
+      Set(Double) -> IR.Type.Double,
+
+      Set(Long, Double) -> IR.Type.LongDouble,
+    )
+  }
 
   private def deriveType(
       specifiers: List[AST.TypeSpecifier | AST.TypeQualifier]

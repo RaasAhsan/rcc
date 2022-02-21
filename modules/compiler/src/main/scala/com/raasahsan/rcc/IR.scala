@@ -153,6 +153,7 @@ object IR {
     case SignedChar
     case UnsignedChar
     case Short
+    case UnsignedShort
     case Int
     case UnsignedInt
     case Long

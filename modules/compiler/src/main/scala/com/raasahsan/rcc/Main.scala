@@ -1,7 +1,7 @@
 package com.raasahsan.rcc
 
 import com.raasahsan.rcc.AST.ExternalDeclaration
-import com.raasahsan.rcc.codegen.llvm._
+import com.raasahsan.rcc.codegen.llir._
 
 object Main {
 

@@ -1,4 +1,4 @@
-package com.raasahsan.rcc.codegen.llvm
+package com.raasahsan.rcc.codegen.llir
 
 object LLIR {
 
