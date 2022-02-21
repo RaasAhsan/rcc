@@ -4,7 +4,7 @@ import munit.FunSuite
 
 class TyperSuite extends FunSuite {
 
-  import AST._
+  import IR._
   import Typer._
 
   test("integers") {
@@ -16,7 +16,7 @@ class TyperSuite extends FunSuite {
 
   test("string literals") {
     assertEquals(
-      typeCheckExpression(Expression.StringLiteral(StringLiteral("hello")), Map()),
+      typeCheckExpression(Expression.StringLiteral("hello"), Map()),
       Right(Type.Pointer(Type.Char))
     )
   }
