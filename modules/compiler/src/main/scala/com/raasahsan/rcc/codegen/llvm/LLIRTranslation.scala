@@ -210,7 +210,7 @@ object LLIRTranslation {
     tpe match {
       case IR.Type.Int          => LLIR.Type.Integer(32)
       case IR.Type.Pointer(tpe) => LLIR.Type.Pointer(translateType(tpe))
-      case _                 => ???
+      case _                    => ???
     }
 
   // TODO: depends on target/data layout? triples arm-none-eabi, x86_64-pc-linux-gnu

@@ -8,7 +8,7 @@ import cats.syntax.all._
 // the downstream pipeline:
 // 1. More precise declarator information (e.g. function definitions)
 // 2. Variable declaration expansion
-// 3. Specifiers to type mapping
+// 3. Type mappings
 object IRTranslation {
 
   def translateTranslationUnit(unit: AST.TranslationUnit): IR.Module =
@@ -230,17 +230,22 @@ object IRTranslation {
     Set(AST.TypeSpecifier.Unsigned, AST.TypeSpecifier.Int) -> IR.Type.UnsignedInt
   )
 
-  private def deriveType(specifiers: List[AST.TypeSpecifier | AST.TypeQualifier]): Option[IR.Type] = {
-    val typeSpecifiers = specifiers.collect {
-      case ts: AST.TypeSpecifier => ts
+  private def deriveType(
+      specifiers: List[AST.TypeSpecifier | AST.TypeQualifier]
+  ): Option[IR.Type] = {
+    val typeSpecifiers = specifiers.collect { case ts: AST.TypeSpecifier =>
+      ts
     }.toSet
-    val typeQualifiers = specifiers.collect {
-      case tq: AST.TypeQualifier => tq
-    }.map(translateTypeQualifier).toNel
+    val typeQualifiers = specifiers
+      .collect { case tq: AST.TypeQualifier =>
+        tq
+      }
+      .map(translateTypeQualifier)
+      .toNel
     specifierMapping.get(typeSpecifiers).map { unqualified =>
       typeQualifiers match {
         case Some(qs) => IR.Type.Qualified(unqualified, qs)
-        case None => unqualified
+        case None     => unqualified
       }
     }
   }

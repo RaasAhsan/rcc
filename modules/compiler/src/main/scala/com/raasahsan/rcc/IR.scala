@@ -168,10 +168,10 @@ object IR {
 
     case Qualified(base: Type, qualifiers: NonEmptyList[TypeQualifier])
 
-    def unqualified: Type = 
+    def unqualified: Type =
       this match {
         case Qualified(base, _) => base
-        case x => x
+        case x                  => x
       }
   }
 

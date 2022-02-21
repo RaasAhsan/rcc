@@ -137,7 +137,11 @@ object Typer {
             else Left("Expected int on both sides of plus")
         } yield lt
       case Expression.Identifier(ident) =>
-        ctx.get(ident).fold(Left(s"identifier $ident not found"))(Right(_))
+        // $3.2.2.1: the type of an lvalue expression is the unqualified version of the type of the lvalue
+        ctx
+          .get(ident)
+          .fold(Left(s"identifier $ident not found"))(Right(_))
+          .map(_.unqualified)
       case Expression.Assignment(l, r) =>
         for {
           lt <- typeCheckExpression(l, ctx)
@@ -181,12 +185,10 @@ object Typer {
         } yield castTpe
       case x => Left(s"invalid expression $x")
     }
-    // $3.2.2.1: the type of an lvalue expression is the unqualified version of the type of the lvalue
-    val unqualifiedTpe = tpe.map(_.unqualified)
 
-    expr.tpe = unqualifiedTpe.toOption
+    expr.tpe = tpe.toOption
 
-    unqualifiedTpe
+    tpe
   }
 
   def compatibleCast(source: Type, target: Type): Either[String, Unit] =
