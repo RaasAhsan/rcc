@@ -62,18 +62,6 @@ object IR {
       initializer: Option[Initializer]
   )
 
-  final case class TypeName(
-      specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier],
-      abstractDeclarator: Option[AbstractDeclarator]
-  )
-
-  final case class AbstractDeclarator(pointer: Pointer)
-
-  enum TypeSpecifierOrQualifier {
-    case Specifier(s: TypeSpecifier)
-    case Qualifier(q: TypeQualifier)
-  }
-
   enum StorageClassSpecifier {
     case Typedef
     case Extern
@@ -137,7 +125,7 @@ object IR {
     final case class ArrayGet(lhs: Expression, index: Expression) extends Expression
     final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
-    final case class Cast(typeName: TypeName, expr: Expression) extends Expression
+    final case class Cast(castTpe: Type, expr: Expression) extends Expression
   }
 
   enum AssignmentOperator {

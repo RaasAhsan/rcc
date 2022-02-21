@@ -64,7 +64,13 @@ object AST {
       initDeclaratorList: Option[InitDeclaratorList]
   )
 
-  final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier])
+  final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier]) {
+    def typeQualifiersOrSpecifiers: List[TypeQualifier | TypeSpecifier] =
+      specifiers.collect {
+        case DeclarationSpecifier.TypeQualifier(tq) => tq
+        case DeclarationSpecifier.TypeSpecifier(ts) => ts
+      }
+  }
 
   enum DeclarationSpecifier {
     case StorageClassSpecifier(value: AST.StorageClassSpecifier)
@@ -75,7 +81,13 @@ object AST {
   final case class TypeName(
       specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier],
       abstractDeclarator: Option[AbstractDeclarator]
-  )
+  ) {
+    def typeSpecifiersOrQualifiers: NonEmptyList[TypeSpecifier | TypeQualifier] =
+      specifierQualifiers.map {
+        case TypeSpecifierOrQualifier.Specifier(s) => s
+        case TypeSpecifierOrQualifier.Qualifier(q) => q
+      }
+  }
 
   final case class AbstractDeclarator(pointer: Pointer)
 

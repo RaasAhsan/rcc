@@ -46,7 +46,7 @@ object IRTranslation {
       case x => throw new IllegalStateException(s"function declarator expected, got $x")
     }
 
-    val returnTpe = fd.specifiers.flatMap(extractTypeFromSpecifiers).get
+    val returnTpe = fd.specifiers.flatMap(ds => deriveType(ds.typeQualifiersOrSpecifiers)).get
 
     val block = IR.Block(
       fd.statements.declarationList
@@ -163,7 +163,7 @@ object IRTranslation {
       case AST.Expression.Reference(expr)   => IR.Expression.Reference(translateExpression(expr))
       case AST.Expression.Dereference(expr) => IR.Expression.Dereference(translateExpression(expr))
       case AST.Expression.Cast(typeName, expr) =>
-        IR.Expression.Cast(translateTypeName(typeName), translateExpression(expr))
+        IR.Expression.Cast(translateTypeName(typeName).get, translateExpression(expr))
     }
 
   def translateConstant(const: AST.Constant): IR.Constant =
@@ -171,24 +171,8 @@ object IRTranslation {
       case AST.Constant.IntegerConstant(i) => IR.Constant.IntegerConstant(i)
     }
 
-  def translateTypeName(typeName: AST.TypeName): IR.TypeName =
-    IR.TypeName(
-      typeName.specifierQualifiers.map(translateTypeSpecifierOrQualifier),
-      typeName.abstractDeclarator.map(translateAbstractDeclarator)
-    )
-
-  def translateTypeSpecifierOrQualifier(
-      in: AST.TypeSpecifierOrQualifier
-  ): IR.TypeSpecifierOrQualifier =
-    in match {
-      case AST.TypeSpecifierOrQualifier.Qualifier(q) =>
-        IR.TypeSpecifierOrQualifier.Qualifier(translateTypeQualifier(q))
-      case AST.TypeSpecifierOrQualifier.Specifier(s) =>
-        IR.TypeSpecifierOrQualifier.Specifier(translateTypeSpecifier(s))
-    }
-
-  def translateAbstractDeclarator(decl: AST.AbstractDeclarator): IR.AbstractDeclarator =
-    IR.AbstractDeclarator(translatePointer(decl.pointer))
+  def translateTypeName(typeName: AST.TypeName): Option[IR.Type] =
+    deriveType(typeName.typeSpecifiersOrQualifiers.toList)
 
   def translatePointer(ptr: AST.Pointer): IR.Pointer =
     IR.Pointer(
@@ -228,7 +212,7 @@ object IRTranslation {
       specifiers: AST.DeclarationSpecifiers,
       declarator: AST.Declarator
   ): Option[IR.Type] = {
-    val baseTpe = extractTypeFromSpecifiers(specifiers)
+    val baseTpe = deriveType(specifiers.typeQualifiersOrSpecifiers)
     // TODO: multiple pointer nestings
     baseTpe.map(tpe => declarator.pointer.fold(tpe)(_ => IR.Type.Pointer(tpe)))
   }
@@ -246,13 +230,12 @@ object IRTranslation {
     Set(AST.TypeSpecifier.Unsigned, AST.TypeSpecifier.Int) -> IR.Type.UnsignedInt
   )
 
-  // TODO: qualified types?
-  private def extractTypeFromSpecifiers(specifiers: AST.DeclarationSpecifiers): Option[IR.Type] = {
-    val typeSpecifiers = specifiers.specifiers.toList.collect {
-      case AST.DeclarationSpecifier.TypeSpecifier(ts) => ts
+  private def deriveType(specifiers: List[AST.TypeSpecifier | AST.TypeQualifier]): Option[IR.Type] = {
+    val typeSpecifiers = specifiers.collect {
+      case ts: AST.TypeSpecifier => ts
     }.toSet
-    val typeQualifiers = specifiers.specifiers.toList.collect {
-      case AST.DeclarationSpecifier.TypeQualifier(tq) => tq
+    val typeQualifiers = specifiers.collect {
+      case tq: AST.TypeQualifier => tq
     }.map(translateTypeQualifier).toNel
     specifierMapping.get(typeSpecifiers).map { unqualified =>
       typeQualifiers match {

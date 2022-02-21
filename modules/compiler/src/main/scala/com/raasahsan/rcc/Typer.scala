@@ -174,10 +174,9 @@ object Typer {
             case _               => Left("pointer type expected")
           }
         } yield utpe
-      case Expression.Cast(typeName, expr) =>
+      case Expression.Cast(castTpe, expr) =>
         for {
           tpe <- typeCheckExpression(expr, ctx)
-          castTpe <- typeNameToType(typeName).fold(Left("invalid type"))(Right(_))
           _ <- compatibleCast(tpe, castTpe)
         } yield castTpe
       case x => Left(s"invalid expression $x")
@@ -200,21 +199,5 @@ object Typer {
       case Expression.Identifier(_) => true
       case _                        => false
     }
-
-  val specifierMapping: Map[Set[TypeSpecifier], Type] = Map(
-    Set(TypeSpecifier.Int) -> Type.Int,
-    Set(TypeSpecifier.Char) -> Type.Char,
-    Set(TypeSpecifier.Unsigned, TypeSpecifier.Int) -> Type.UnsignedInt
-  )
-
-  def typePointer(tpe: Type, pointer: Option[Pointer]): Type =
-    pointer.fold(tpe)(_ => Type.Pointer(tpe))
-
-  def typeNameToType(typeName: TypeName): Option[Type] = {
-    val key = typeName.specifierQualifiers.toList.collect {
-      case TypeSpecifierOrQualifier.Specifier(s) => s
-    }.toSet
-    specifierMapping.get(key).map(b => typeName.abstractDeclarator.fold(b)(_ => Type.Pointer(b)))
-  }
 
 }
