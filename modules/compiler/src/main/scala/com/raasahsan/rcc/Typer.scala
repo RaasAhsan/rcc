@@ -179,9 +179,13 @@ object Typer {
           }
         } yield utpe
       case Expression.Cast(castTpe, expr) =>
+        // TODO: these rules must be enriched. e.g. only arbitrary integers may be converted to pointers
         for {
+          _ <-
+            if (castTpe.unqualified.isScalar) Right(())
+            else Left("lhs operand must have scalar type")
           tpe <- typeCheckExpression(expr, ctx)
-          _ <- compatibleCast(tpe, castTpe)
+          _ <- if (tpe.isScalar) Right(()) else Left("rhs operand must have scalar type")
         } yield castTpe
       case x => Left(s"invalid expression $x")
     }
@@ -190,13 +194,6 @@ object Typer {
 
     tpe
   }
-
-  def compatibleCast(source: Type, target: Type): Either[String, Unit] =
-    (target, source) match {
-      case (Type.Pointer(_), Type.Int) => Right(())
-      case _ if source == target       => Right(())
-      case _                           => Left("invalid cast")
-    }
 
   def isLvalue(expr: Expression): Boolean =
     expr match {

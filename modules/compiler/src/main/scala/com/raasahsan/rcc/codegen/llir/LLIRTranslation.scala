@@ -179,6 +179,20 @@ object LLIRTranslation {
               ExpressionGen(List(l1, l2), LLIR.Value.Local(derefLocal), derefTpe)
             case x => throw new RuntimeException(s"not implemented for $x")
           }
+        case IR.Expression.Cast(tpe, expr) =>
+          println(tpe)
+          val exprTpe = expr.tpe.get
+          tpe match {
+            case IR.Type.Pointer(baseTpe) if exprTpe.isIntegral =>
+              val genExpr = translateExpression(expr, symbols)
+              val ptrLocal = nextLocal()
+              val resTpe = LLIR.Type.Pointer(translateType(baseTpe))
+              val castOp = LLIR.Op
+                .Inttoptr(genExpr.tpe, genExpr.value, resTpe)
+                .instruction(ptrLocal)
+              ExpressionGen(genExpr.code ++ List(castOp), LLIR.Value.Local(ptrLocal), resTpe)
+            case x => throw new RuntimeException(s"cast conversion not implemented yet: $x")
+          }
         case x => throw new RuntimeException(s"not implemented for $x")
       }
     }
@@ -209,8 +223,9 @@ object LLIRTranslation {
   def translateType(tpe: IR.Type): LLIR.Type =
     tpe match {
       case IR.Type.Int          => LLIR.Type.Integer(32)
+      case IR.Type.UnsignedInt  => LLIR.Type.Integer(32)
       case IR.Type.Pointer(tpe) => LLIR.Type.Pointer(translateType(tpe))
-      case _                    => ???
+      case x => throw new RuntimeException(s"type translation not implemented: $x")
     }
 
   // TODO: depends on target/data layout? triples arm-none-eabi, x86_64-pc-linux-gnu

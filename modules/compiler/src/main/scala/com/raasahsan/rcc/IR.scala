@@ -174,6 +174,44 @@ object IR {
         case Qualified(base, _) => base
         case x                  => x
       }
+
+    // $3.2.1.5
+
+    def isScalar: Boolean =
+      isArithmetic || isPointer
+
+    def isPointer: Boolean =
+      this match {
+        case Type.Pointer(_) => true
+        case _               => false
+      }
+
+    def isArithmetic: Boolean =
+      isIntegral || isFloating
+
+    def isSigned: Boolean =
+      this match {
+        case Type.SignedChar | Type.Short | Type.Int | Type.Long => true
+        case _                                                   => false
+      }
+
+    def isUnsigned: Boolean =
+      this match {
+        case Type.UnsignedChar | Type.UnsignedShort | Type.UnsignedInt | Type.UnsignedLong => true
+        case _                                                                             => false
+      }
+
+    def isIntegral: Boolean =
+      isUnsigned || isSigned || (this match {
+        case Type.Char => true
+        case _         => false
+      })
+
+    def isFloating: Boolean =
+      this match {
+        case Type.Float | Type.Double | Type.LongDouble => true
+        case _                                          => false
+      }
   }
 
   enum TypeQualifier {

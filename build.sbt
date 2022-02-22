@@ -19,7 +19,8 @@ lazy val compiler = project
     fork / run := true,
     libraryDependencies ++= Seq(
       Dependencies.catsParse,
-      Dependencies.osLib
+      Dependencies.osLib,
+      Dependencies.pprint
     ),
     scalacOptions ++= Seq(
       "-feature",

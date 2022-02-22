@@ -8,6 +8,8 @@ object Dependencies {
 
   val decline = "com.monovore" %% "decline" % "2.2.0"
 
+  val pprint = "com.lihaoyi" %% "pprint" % "0.7.0"
+
   val munit = "org.scalameta" %% "munit" % "0.7.29"
 
 }

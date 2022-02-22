@@ -37,7 +37,7 @@ object Parser {
     }
 
   def initDeclaratorList: P[InitDeclaratorList] =
-    initDeclarator.rep.map(InitDeclaratorList(_))
+    initDeclarator.repSep(comma).map(InitDeclaratorList(_))
 
   def initDeclarator: P[InitDeclarator] =
     (declarator ~ (assignOp *> initializer).?).map { case (declarator, init) =>
@@ -328,8 +328,8 @@ object Parser {
 
   def integerConstant: P[Int] =
     decimalConstant.backtrack |
-      octalConstant.backtrack |
-      hexadecimalConstant
+      hexadecimalConstant.backtrack | // parse hex first since there is a common prefix
+      octalConstant
 
   def decimalConstant: P[Int] =
     (nonzeroDigit ~ digit.rep0).map { (h, t) =>
@@ -341,7 +341,7 @@ object Parser {
 
   def hexadecimalConstant: P[Int] =
     ((P.string("0x") | P.string("0X")) *> hexadecimalDigit.rep).map { digits =>
-      Integer.decode(digits.toList.mkString)
+      Integer.parseInt(digits.toList.mkString, 16)
     }
 
   def keyword(t: String): P[Unit] =

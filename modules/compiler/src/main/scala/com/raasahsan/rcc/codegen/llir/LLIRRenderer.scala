@@ -37,6 +37,8 @@ object LLIRRenderer {
       case Op.Load(vol, tpe, ptrTpe, ptr, align) =>
         val renderAlign = align.fold("")(a => s", align $a")
         s"load ${renderType(tpe)}, ${renderType(ptrTpe)} ${renderValue(ptr)}$renderAlign"
+      case Op.Inttoptr(srcTpe, value, targetTpe) =>
+        s"inttoptr ${renderType(srcTpe)} ${renderValue(value)} to ${renderType(targetTpe)}"
       case _ => ???
     }
 

@@ -8,6 +8,7 @@ object Main {
   val program = """
   
     int main() {
+      unsigned int* baseaddr = (unsigned int*) 0xb9000;
       int x = 3;
       int* h = &x;
       return *h;
@@ -46,13 +47,13 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     // println(program.substring(278))
-    val result = Parser.parse(program)
-    println(result)
+    val parse = Parser.parse(program)
+    pprint.pprintln(parse)
 
-    val p = result.toOption.get
+    val p = parse.toOption.get
 
     val ir = IRTranslation.translateTranslationUnit(p)
-    println(ir)
+    pprint.pprintln(ir)
 
     val typed = Typer.typeCheck(ir)
     println(typed)

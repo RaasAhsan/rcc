@@ -68,7 +68,7 @@ object LLIR {
     case Getelementptr()
 
     // Conversion operations
-    case Inttoptr(tpe: Type, value: String, ptrTpe: Type)
+    case Inttoptr(tpe: Type, value: Value, ptrTpe: Type)
 
     def instruction: Instruction = Instruction(None, this)
     def instruction(index: Int): Instruction = Instruction(Some(index), this)
