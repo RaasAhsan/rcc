@@ -179,19 +179,25 @@ object LLIRTranslation {
               ExpressionGen(List(l1, l2), LLIR.Value.Local(derefLocal), derefTpe)
             case x => throw new RuntimeException(s"not implemented for $x")
           }
-        case IR.Expression.Cast(tpe, expr) =>
-          println(tpe)
-          val exprTpe = expr.tpe.get
-          tpe match {
-            case IR.Type.Pointer(baseTpe) if exprTpe.isIntegral =>
+        case IR.Expression.Cast(castTpe, expr) =>
+          (castTpe, expr.tpe.get) match {
+            case (IR.Type.Pointer(targetTpe), srcTpe) if srcTpe.isIntegral =>
               val genExpr = translateExpression(expr, symbols)
+              val resTpe = LLIR.Type.Pointer(translateType(targetTpe))
               val ptrLocal = nextLocal()
-              val resTpe = LLIR.Type.Pointer(translateType(baseTpe))
               val castOp = LLIR.Op
                 .Inttoptr(genExpr.tpe, genExpr.value, resTpe)
                 .instruction(ptrLocal)
               ExpressionGen(genExpr.code ++ List(castOp), LLIR.Value.Local(ptrLocal), resTpe)
-            case x => throw new RuntimeException(s"cast conversion not implemented yet: $x")
+            case (targetTpe, IR.Type.Pointer(srcTpe)) if targetTpe.isIntegral =>
+              val genExpr = translateExpression(expr, symbols)
+              val resTpe = translateType(targetTpe)
+              val local = nextLocal()
+              val castOp = LLIR.Op
+                .Ptrtoint(genExpr.tpe, genExpr.value, resTpe)
+                .instruction(local)
+              ExpressionGen(genExpr.code ++ List(castOp), LLIR.Value.Local(local), resTpe)
+            case x => throw new RuntimeException(s"cast conversion not implemented between: $x")
           }
         case x => throw new RuntimeException(s"not implemented for $x")
       }

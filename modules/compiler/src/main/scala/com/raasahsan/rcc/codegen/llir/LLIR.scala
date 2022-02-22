@@ -69,6 +69,7 @@ object LLIR {
 
     // Conversion operations
     case Inttoptr(tpe: Type, value: Value, ptrTpe: Type)
+    case Ptrtoint(ptrTpe: Type, value: Value, tpe: Type)
 
     def instruction: Instruction = Instruction(None, this)
     def instruction(index: Int): Instruction = Instruction(Some(index), this)

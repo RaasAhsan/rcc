@@ -8,10 +8,10 @@ object Main {
   val program = """
   
     int main() {
-      unsigned int* baseaddr = (unsigned int*) 0xb9000;
       int x = 3;
       int* h = &x;
-      return *h;
+      int addr = (int) h;
+      return addr;
     }
   """
 
