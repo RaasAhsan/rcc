@@ -1,5 +1,6 @@
 package com.raasahsan.rcc
 
+import cats.data.NonEmptyList
 import cats.syntax.all._
 import cats.parse.{Parser => P, Parser0 => P0}
 
@@ -36,8 +37,8 @@ object Parser {
       Declaration(specifiers, inits)
     }
 
-  def initDeclaratorList: P[InitDeclaratorList] =
-    initDeclarator.repSep(comma).map(InitDeclaratorList(_))
+  def initDeclaratorList: P[NonEmptyList[InitDeclarator]] =
+    initDeclarator.repSep(comma)
 
   def initDeclarator: P[InitDeclarator] =
     (declarator ~ (assignOp *> initializer).?).map { case (declarator, init) =>
@@ -75,7 +76,8 @@ object Parser {
     typeSpecifier.map(TypeSpecifierOrQualifier.Specifier(_)) |
       typeQualifier.map(TypeSpecifierOrQualifier.Qualifier(_))
 
-  // TODO: finish with composite types
+  // TODO: we need to place some constraints on what is allowed here
+  // struct-or-union cannot be mixed with int for example, which is causing some problems
   def typeSpecifier: P[TypeSpecifier] =
     keyword("void").as(TypeSpecifier.Void) |
       keyword("char").as(TypeSpecifier.Char) |
@@ -85,10 +87,34 @@ object Parser {
       keyword("float").as(TypeSpecifier.Float) |
       keyword("double").as(TypeSpecifier.Double) |
       keyword("signed").as(TypeSpecifier.Signed) |
-      keyword("unsigned").as(TypeSpecifier.Unsigned)
+      keyword("unsigned").as(TypeSpecifier.Unsigned) |
+      structOrUnionSpecifier
 
-  def typeQualifierList: P[TypeQualifierList] =
-    typeQualifier.rep.map(TypeQualifierList(_))
+  def structOrUnionSpecifier: P[TypeSpecifier] =
+    (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace))
+      .map { case ((su, ident), decls) => TypeSpecifier.StructOrUnion(su, ident, Some(decls)) } |
+    (structOrUnion ~ identifier).map { case (su, ident) => TypeSpecifier.StructOrUnion(su, Some(ident), None) } 
+
+  def structOrUnion: P[StructOrUnion] =
+    keyword("struct").as(StructOrUnion.Struct) |
+      keyword("union").as(StructOrUnion.Union)
+
+  def structDeclarationList: P[NonEmptyList[StructDeclaration]] =
+    structDeclaration.rep
+
+  def structDeclaration: P[StructDeclaration] = 
+    (typeSpecifierOrQualifier.rep ~ structDeclaratorList <* semicolon).map { case (sqs, declarators) =>
+      StructDeclaration(sqs, declarators)  
+    }
+
+  def structDeclaratorList: P[NonEmptyList[StructDeclarator]] =
+    structDeclarator.repSep(comma)
+
+  def structDeclarator: P[StructDeclarator] = 
+    declarator.map(StructDeclarator(_))
+
+  def typeQualifierList: P[NonEmptyList[TypeQualifier]] =
+    typeQualifier.rep
 
   def typeQualifier: P[TypeQualifier] =
     keyword("const").as(TypeQualifier.Const) |

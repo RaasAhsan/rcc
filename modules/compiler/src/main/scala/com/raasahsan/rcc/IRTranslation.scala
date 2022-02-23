@@ -60,14 +60,13 @@ object IRTranslation {
   }
 
   def translateDeclaration(decl: AST.Declaration): List[IR.Declaration] =
-    decl.initDeclaratorList.map(_.declarators.toList).getOrElse(Nil).map { initDecl =>
+    decl.initDeclarators.map(_.toList).getOrElse(Nil).map { initDecl =>
       val identifier = extractIdentifierFromDirectDeclarator(initDecl.declarator.directDeclarator)
       val storageClass = extractStorageClass(decl.specifiers).map(translateStorageClass)
       val tpe = extractTypeFromDeclaration(decl.specifiers, initDecl.declarator)
         .getOrElse(throw new RuntimeException("no type found"))
       IR.Declaration(
         storageClass,
-        Nil,
         identifier,
         tpe,
         initDecl.initializer.map(translateInitializer)
@@ -180,7 +179,7 @@ object IRTranslation {
 
   def translatePointer(ptr: AST.Pointer): IR.Pointer =
     IR.Pointer(
-      ptr.typeQualifiers.map(_.qualifiers.toList).getOrElse(Nil).map(translateTypeQualifier),
+      ptr.typeQualifiers.map(_.toList).getOrElse(Nil).map(translateTypeQualifier),
       ptr.pointer.map(translatePointer)
     )
 

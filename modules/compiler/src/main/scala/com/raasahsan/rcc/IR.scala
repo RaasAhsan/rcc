@@ -14,6 +14,11 @@ object IR {
     case Declaration(value: IR.Declaration)
   }
 
+  final case class StructDeclaration(ident: Identifier, fields: List[FieldDeclaration])
+
+  final case class FieldDeclaration(ident: Identifier, tpe: Type)
+
+  // Declares a function prototype
   final case class FunctionDeclaration()
 
   final case class FunctionDefinition(
@@ -56,7 +61,6 @@ object IR {
 
   final case class Declaration(
       storageClass: Option[StorageClassSpecifier],
-      qualifiers: List[TypeQualifier],
       name: Identifier,
       tpe: Type,
       initializer: Option[Initializer]

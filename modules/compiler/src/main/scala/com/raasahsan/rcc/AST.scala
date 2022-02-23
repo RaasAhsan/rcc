@@ -61,7 +61,7 @@ object AST {
 
   final case class Declaration(
       specifiers: DeclarationSpecifiers,
-      initDeclaratorList: Option[InitDeclaratorList]
+      initDeclarators: Option[NonEmptyList[InitDeclarator]]
   )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier]) {
@@ -114,19 +114,25 @@ object AST {
     case Double
     case Signed
     case Unsigned
-    case StructOrUnion()
+    case StructOrUnion(variant: AST.StructOrUnion, identifier: Option[Identifier], declarations: Option[NonEmptyList[StructDeclaration]])
+    case Union()
     case Enum()
     case TypedefName()
   }
 
-  final case class TypeQualifierList(qualifiers: NonEmptyList[TypeQualifier])
+  enum StructOrUnion {
+    case Struct
+    case Union
+  }
+
+  final case class StructDeclaration(specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier], declarators: NonEmptyList[StructDeclarator])
+
+  final case class StructDeclarator(declarator: Declarator)
 
   enum TypeQualifier {
     case Const
     case Volatile
   }
-
-  final case class InitDeclaratorList(declarators: NonEmptyList[InitDeclarator])
 
   // TODO: break apart Typable in our custom AST so the type is explicit
   final case class InitDeclarator(declarator: Declarator, initializer: Option[Initializer])
@@ -149,7 +155,7 @@ object AST {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: Option[AST.Declarator])
   }
 
-  final case class Pointer(typeQualifiers: Option[TypeQualifierList], pointer: Option[Pointer])
+  final case class Pointer(typeQualifiers: Option[NonEmptyList[TypeQualifier]], pointer: Option[Pointer])
 
   enum DirectDeclarator {
     case Identifier(value: AST.Identifier)

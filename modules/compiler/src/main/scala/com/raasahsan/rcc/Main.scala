@@ -1,11 +1,14 @@
 package com.raasahsan.rcc
 
-import com.raasahsan.rcc.AST.ExternalDeclaration
 import com.raasahsan.rcc.codegen.llir._
 
 object Main {
 
   val program = """
+    struct point {
+      int x;
+      int y;
+    };
   
     int main() {
       int x = 3;
