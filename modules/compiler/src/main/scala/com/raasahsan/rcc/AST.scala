@@ -65,13 +65,13 @@ object AST {
   )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier]) {
-    def typeSpecifiers: List[TypeSpecifier] = 
-      specifiers.collect {
-        case DeclarationSpecifier.TypeSpecifier(ts) => ts
+    def typeSpecifiers: List[TypeSpecifier] =
+      specifiers.collect { case DeclarationSpecifier.TypeSpecifier(ts) =>
+        ts
       }
-    def typeQualifiers: List[TypeQualifier] = 
-      specifiers.collect {
-        case DeclarationSpecifier.TypeQualifier(ts) => ts
+    def typeQualifiers: List[TypeQualifier] =
+      specifiers.collect { case DeclarationSpecifier.TypeQualifier(ts) =>
+        ts
       }
   }
 
@@ -82,20 +82,22 @@ object AST {
   }
 
   final case class TypeName(
-      sqs: NonEmptyList[TypeSpecifierOrQualifier],
+      specifiers: TypeSpecifierOrQualifiers,
       abstractDeclarator: Option[AbstractDeclarator]
-  ) {
-    def specifiers: List[TypeSpecifier] = 
-      sqs.collect {
-        case TypeSpecifierOrQualifier.Specifier(ts) => ts
-      }
-    def qualifiers: List[TypeQualifier] = 
-      sqs.collect {
-        case TypeSpecifierOrQualifier.Qualifier(ts) => ts
-      }
-  }
+  )
 
   final case class AbstractDeclarator(pointer: Pointer)
+
+  final case class TypeSpecifierOrQualifiers(sps: NonEmptyList[TypeSpecifierOrQualifier]) {
+    def specifiers: List[TypeSpecifier] =
+      sps.collect { case TypeSpecifierOrQualifier.Specifier(ts) =>
+        ts
+      }
+    def qualifiers: List[TypeQualifier] =
+      sps.collect { case TypeSpecifierOrQualifier.Qualifier(ts) =>
+        ts
+      }
+  }
 
   enum TypeSpecifierOrQualifier {
     case Specifier(s: TypeSpecifier)
@@ -136,7 +138,10 @@ object AST {
     case Union
   }
 
-  final case class StructDeclaration(specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier], declarators: NonEmptyList[StructDeclarator])
+  final case class StructDeclaration(
+      sqs: TypeSpecifierOrQualifiers,
+      declarators: NonEmptyList[StructDeclarator]
+  )
 
   final case class StructDeclarator(declarator: Declarator)
 
@@ -166,7 +171,10 @@ object AST {
     case Declarator(specifiers: DeclarationSpecifiers, declarator: Option[AST.Declarator])
   }
 
-  final case class Pointer(typeQualifiers: Option[NonEmptyList[TypeQualifier]], pointer: Option[Pointer])
+  final case class Pointer(
+      typeQualifiers: Option[NonEmptyList[TypeQualifier]],
+      pointer: Option[Pointer]
+  )
 
   enum DirectDeclarator {
     case Identifier(value: AST.Identifier)

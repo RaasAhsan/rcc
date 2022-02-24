@@ -19,7 +19,7 @@ object IRTranslation {
 }
 
 // TODO: Replace with State monad to drive down all context
-final class IRTranslation private() {
+final class IRTranslation private () {
 
   private var anonStructs: Int = -1
   private var structs: mutable.ListBuffer[IR.StructDeclaration] = new mutable.ListBuffer()
@@ -34,8 +34,10 @@ final class IRTranslation private() {
     IR.Identifier(s"anon.$anonStructs")
   }
 
-  def translateTranslationUnit(unit: AST.TranslationUnit): IR.Module =
-    IR.Module(unit.externalDeclarations.toList.flatMap(translateExternalDeclaration))
+  def translateTranslationUnit(unit: AST.TranslationUnit): IR.Module = {
+    val moduleDecls = unit.externalDeclarations.toList.flatMap(translateExternalDeclaration)
+    IR.Module(structs.toList, moduleDecls)
+  }
 
   def translateExternalDeclaration(decl: AST.ExternalDeclaration): List[IR.ModuleDeclaration] =
     decl match {
@@ -55,8 +57,10 @@ final class IRTranslation private() {
 
         val functionParams = params.parameterList.parameters.toList.map {
           case AST.ParameterDeclaration.Declarator(specifiers, declOpt) =>
-            val decl = declOpt.get // TODO: an identifier is expected here, except if the specifier is void?
-            val paramTpe = deriveType(specifiers.typeSpecifiers, specifiers.typeQualifiers, decl.pointer).get
+            val decl =
+              declOpt.get // TODO: an identifier is expected here, except if the specifier is void?
+            val paramTpe =
+              deriveType(specifiers.typeSpecifiers, specifiers.typeQualifiers, decl.pointer).get
             val paramName = extractIdentifierFromDirectDeclarator(decl.directDeclarator)
             IR.FunctionParameter(paramTpe, paramName)
         }
@@ -68,7 +72,9 @@ final class IRTranslation private() {
       case x => throw new IllegalStateException(s"function declarator expected, got $x")
     }
 
-    val returnTpe = fd.specifiers.flatMap(ds => deriveType(ds.typeSpecifiers, ds.typeQualifiers, fd.declarator.pointer)).get
+    val returnTpe = fd.specifiers
+      .flatMap(ds => deriveType(ds.typeSpecifiers, ds.typeQualifiers, fd.declarator.pointer))
+      .get
 
     val block = IR.Block(
       fd.statements.declarationList
@@ -86,14 +92,17 @@ final class IRTranslation private() {
   def translateDeclaration(decl: AST.Declaration): List[IR.Declaration] = {
     // First, check to see if we are introducing any tags.
     // Then we check to see if there are any declarators
-
+    val declarationType = extractTypeFromSpecifiers(decl.specifiers.typeSpecifiers).get
     decl.initDeclarators match {
-      case Some(initDecls) => 
+      case Some(initDecls) =>
         initDecls.toList.map { initDecl =>
-          val identifier = extractIdentifierFromDirectDeclarator(initDecl.declarator.directDeclarator)
+          val identifier =
+            extractIdentifierFromDirectDeclarator(initDecl.declarator.directDeclarator)
           val storageClass = extractStorageClass(decl.specifiers).map(translateStorageClass)
-          val tpe = deriveType(decl.specifiers.typeSpecifiers, decl.specifiers.typeQualifiers, initDecl.declarator.pointer)
-            .getOrElse(throw new RuntimeException("no type found"))
+          val tpe = applyTypeQualifiers(
+            applyPointerType(declarationType, initDecl.declarator.pointer),
+            decl.specifiers.typeQualifiers
+          )
           IR.Declaration(
             storageClass,
             identifier,
@@ -102,7 +111,8 @@ final class IRTranslation private() {
           )
         }
       case None =>
-        ???
+        // TODO: check to make sure we're at least declaring a tag?
+        Nil
     }
   }
 
@@ -205,7 +215,11 @@ final class IRTranslation private() {
 
   // TODO: correct pointer nesting. double pointers won't work, also type qualifiers
   def translateTypeName(typeName: AST.TypeName): Option[IR.Type] =
-    deriveType(typeName.specifiers, typeName.qualifiers, typeName.abstractDeclarator.map(_.pointer))
+    deriveType(
+      typeName.specifiers.specifiers,
+      typeName.specifiers.qualifiers,
+      typeName.abstractDeclarator.map(_.pointer)
+    )
 
   def translatePointer(ptr: AST.Pointer): IR.Pointer =
     IR.Pointer(
@@ -219,8 +233,17 @@ final class IRTranslation private() {
       case AST.TypeQualifier.Volatile => IR.TypeQualifier.Volatile
     }
 
-  def translateFieldDeclaration(decl: AST.StructDeclaration): IR.FieldDeclaration = 
-    ???
+  def translateFieldDeclaration(decl: AST.StructDeclaration): List[IR.FieldDeclaration] = {
+    val declarationType = extractTypeFromSpecifiers(decl.sqs.specifiers).get
+    decl.declarators.toList.map { structDecl =>
+      val name = extractIdentifierFromDirectDeclarator(structDecl.declarator.directDeclarator)
+      val tpe = applyTypeQualifiers(
+        applyPointerType(declarationType, structDecl.declarator.pointer),
+        decl.sqs.qualifiers
+      )
+      IR.FieldDeclaration(name, tpe)
+    }
+  }
 
   private def extractIdentifierFromDirectDeclarator(dd: AST.DirectDeclarator): IR.Identifier =
     dd match {
@@ -266,19 +289,25 @@ final class IRTranslation private() {
     )
   }
 
-  private def deriveType(specifiers: List[AST.TypeSpecifier], qualifiers: List[AST.TypeQualifier], pointer: Option[AST.Pointer]): Option[IR.Type] =
+  private def deriveType(
+      specifiers: List[AST.TypeSpecifier],
+      qualifiers: List[AST.TypeQualifier],
+      pointer: Option[AST.Pointer]
+  ): Option[IR.Type] =
     extractTypeFromSpecifiers(specifiers)
-      .map(t => pointer.fold(t)(p => applyPointerType(t, p)))
+      .map(t => applyPointerType(t, pointer))
       .map(t => applyTypeQualifiers(t, qualifiers))
 
   // TODO: will add to context
-  private def extractTypeFromSpecifiers(specifiers: List[AST.TypeSpecifier]): Option[IR.Type] = 
+  private def extractTypeFromSpecifiers(specifiers: List[AST.TypeSpecifier]): Option[IR.Type] =
     specifiers match {
-      case AST.TypeSpecifier.StructOrUnion(AST.StructOrUnion.Struct, body) :: Nil => 
+      case AST.TypeSpecifier.StructOrUnion(AST.StructOrUnion.Struct, body) :: Nil =>
         body match {
           case AST.StructBody.Full(ident, decls) =>
             val id = ident.map(translateIdentifier).getOrElse(nextAnonStruct())
-            val structDecl = IR.StructDeclaration(id, decls.toList.map(translateFieldDeclaration))
+            val structDecl =
+              IR.StructDeclaration(id, decls.toList.flatMap(translateFieldDeclaration))
+            addStruct(structDecl)
             Some(IR.Type.UserDefined(id))
           case _ => ???
         }
@@ -286,8 +315,8 @@ final class IRTranslation private() {
     }
 
   // TODO: nested pointers
-  private def applyPointerType(tpe: IR.Type, declarator: AST.Pointer): IR.Type =
-    IR.Type.Pointer(tpe)
+  private def applyPointerType(tpe: IR.Type, pointer: Option[AST.Pointer]): IR.Type =
+    pointer.fold(tpe)(_ => IR.Type.Pointer(tpe))
 
   private def applyTypeQualifiers(tpe: IR.Type, qualifiers: List[AST.TypeQualifier]): IR.Type =
     qualifiers

@@ -6,7 +6,10 @@ import cats.data.{NonEmptyList, NonEmptySet}
 object IR {
   // The unit of program text after preprocessing is called a translation unit,
   // which consists of a sequence of external declarations.
-  final case class Module(moduleDeclarations: List[ModuleDeclaration])
+  final case class Module(
+      structDeclarations: List[StructDeclaration],
+      moduleDeclarations: List[ModuleDeclaration]
+  )
 
   enum ModuleDeclaration {
     case FunctionDefinition(value: IR.FunctionDefinition)

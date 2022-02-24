@@ -65,12 +65,15 @@ object Parser {
       keyword("register").as(StorageClassSpecifier.Register)
 
   def typeName: P[TypeName] =
-    (typeSpecifierOrQualifier.rep ~ abstractDeclarator.?).map { (ts, ad) =>
+    (typeSpecifierOrQualifiers ~ abstractDeclarator.?).map { (ts, ad) =>
       TypeName(ts, ad)
     }
 
   def abstractDeclarator: P[AbstractDeclarator] =
     pointer.map(AbstractDeclarator(_))
+
+  def typeSpecifierOrQualifiers: P[TypeSpecifierOrQualifiers] =
+    typeSpecifierOrQualifier.rep.map(TypeSpecifierOrQualifiers(_))
 
   def typeSpecifierOrQualifier: P[TypeSpecifierOrQualifier] =
     typeSpecifier.map(TypeSpecifierOrQualifier.Specifier(_)) |
@@ -92,8 +95,12 @@ object Parser {
 
   def structOrUnionSpecifier: P[TypeSpecifier] =
     (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace))
-      .map { case ((su, ident), decls) => TypeSpecifier.StructOrUnion(su, StructBody.Full(ident, decls)) } |
-    (structOrUnion ~ identifier).map { case (su, ident) => TypeSpecifier.StructOrUnion(su, StructBody.Incomplete(ident)) } 
+      .map { case ((su, ident), decls) =>
+        TypeSpecifier.StructOrUnion(su, StructBody.Full(ident, decls))
+      } |
+      (structOrUnion ~ identifier).map { case (su, ident) =>
+        TypeSpecifier.StructOrUnion(su, StructBody.Incomplete(ident))
+      }
 
   def structOrUnion: P[StructOrUnion] =
     keyword("struct").as(StructOrUnion.Struct) |
@@ -102,15 +109,15 @@ object Parser {
   def structDeclarationList: P[NonEmptyList[StructDeclaration]] =
     structDeclaration.rep
 
-  def structDeclaration: P[StructDeclaration] = 
-    (typeSpecifierOrQualifier.rep ~ structDeclaratorList <* semicolon).map { case (sqs, declarators) =>
-      StructDeclaration(sqs, declarators)  
+  def structDeclaration: P[StructDeclaration] =
+    (typeSpecifierOrQualifiers ~ structDeclaratorList <* semicolon).map { case (sqs, declarators) =>
+      StructDeclaration(sqs, declarators)
     }
 
   def structDeclaratorList: P[NonEmptyList[StructDeclarator]] =
     structDeclarator.repSep(comma)
 
-  def structDeclarator: P[StructDeclarator] = 
+  def structDeclarator: P[StructDeclarator] =
     declarator.map(StructDeclarator(_))
 
   def typeQualifierList: P[NonEmptyList[TypeQualifier]] =
