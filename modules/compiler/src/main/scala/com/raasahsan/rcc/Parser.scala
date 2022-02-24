@@ -92,8 +92,8 @@ object Parser {
 
   def structOrUnionSpecifier: P[TypeSpecifier] =
     (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace))
-      .map { case ((su, ident), decls) => TypeSpecifier.StructOrUnion(su, ident, Some(decls)) } |
-    (structOrUnion ~ identifier).map { case (su, ident) => TypeSpecifier.StructOrUnion(su, Some(ident), None) } 
+      .map { case ((su, ident), decls) => TypeSpecifier.StructOrUnion(su, StructBody.Full(ident, decls)) } |
+    (structOrUnion ~ identifier).map { case (su, ident) => TypeSpecifier.StructOrUnion(su, StructBody.Incomplete(ident)) } 
 
   def structOrUnion: P[StructOrUnion] =
     keyword("struct").as(StructOrUnion.Struct) |

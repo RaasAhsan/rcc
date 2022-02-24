@@ -65,10 +65,13 @@ object AST {
   )
 
   final case class DeclarationSpecifiers(specifiers: NonEmptyList[DeclarationSpecifier]) {
-    def typeQualifiersOrSpecifiers: List[TypeQualifier | TypeSpecifier] =
+    def typeSpecifiers: List[TypeSpecifier] = 
       specifiers.collect {
-        case DeclarationSpecifier.TypeQualifier(tq) => tq
         case DeclarationSpecifier.TypeSpecifier(ts) => ts
+      }
+    def typeQualifiers: List[TypeQualifier] = 
+      specifiers.collect {
+        case DeclarationSpecifier.TypeQualifier(ts) => ts
       }
   }
 
@@ -79,13 +82,16 @@ object AST {
   }
 
   final case class TypeName(
-      specifierQualifiers: NonEmptyList[TypeSpecifierOrQualifier],
+      sqs: NonEmptyList[TypeSpecifierOrQualifier],
       abstractDeclarator: Option[AbstractDeclarator]
   ) {
-    def typeSpecifiersOrQualifiers: NonEmptyList[TypeSpecifier | TypeQualifier] =
-      specifierQualifiers.map {
-        case TypeSpecifierOrQualifier.Specifier(s) => s
-        case TypeSpecifierOrQualifier.Qualifier(q) => q
+    def specifiers: List[TypeSpecifier] = 
+      sqs.collect {
+        case TypeSpecifierOrQualifier.Specifier(ts) => ts
+      }
+    def qualifiers: List[TypeQualifier] = 
+      sqs.collect {
+        case TypeSpecifierOrQualifier.Qualifier(ts) => ts
       }
   }
 
@@ -114,10 +120,15 @@ object AST {
     case Double
     case Signed
     case Unsigned
-    case StructOrUnion(variant: AST.StructOrUnion, identifier: Option[Identifier], declarations: Option[NonEmptyList[StructDeclaration]])
+    case StructOrUnion(variant: AST.StructOrUnion, body: StructBody)
     case Union()
     case Enum()
     case TypedefName()
+  }
+
+  enum StructBody {
+    case Incomplete(ident: Identifier)
+    case Full(ident: Option[Identifier], decls: NonEmptyList[StructDeclaration])
   }
 
   enum StructOrUnion {

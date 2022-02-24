@@ -55,7 +55,7 @@ object Main {
 
     val p = parse.toOption.get
 
-    val ir = IRTranslation.translateTranslationUnit(p)
+    val ir = IRTranslation.translate(p)
     pprint.pprintln(ir)
 
     val typed = Typer.typeCheck(ir)

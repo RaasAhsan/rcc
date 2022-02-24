@@ -1,6 +1,10 @@
 package com.raasahsan.rcc
 
 import cats.syntax.all._
+import cats.data.NonEmptyList
+
+import scala.collection.mutable
+import com.raasahsan.rcc.AST.DeclarationSpecifiers
 
 // Performs a translation between the C syntax tree and the
 // RCC internal representation.
@@ -10,16 +14,35 @@ import cats.syntax.all._
 // 2. Variable declaration expansion
 // 3. Type mappings
 object IRTranslation {
+  def translate(unit: AST.TranslationUnit): IR.Module =
+    new IRTranslation().translateTranslationUnit(unit)
+}
+
+// TODO: Replace with State monad to drive down all context
+final class IRTranslation private() {
+
+  private var anonStructs: Int = -1
+  private var structs: mutable.ListBuffer[IR.StructDeclaration] = new mutable.ListBuffer()
+
+  private def addStruct(decl: IR.StructDeclaration): Unit = {
+    structs += decl
+  }
+
+  // Deanonymize anonymous structs
+  private def nextAnonStruct(): IR.Identifier = {
+    anonStructs += 1
+    IR.Identifier(s"anon.$anonStructs")
+  }
 
   def translateTranslationUnit(unit: AST.TranslationUnit): IR.Module =
-    IR.Module(unit.externalDeclarations.toList.map(translateExternalDeclaration))
+    IR.Module(unit.externalDeclarations.toList.flatMap(translateExternalDeclaration))
 
-  def translateExternalDeclaration(decl: AST.ExternalDeclaration): IR.ModuleDeclaration =
+  def translateExternalDeclaration(decl: AST.ExternalDeclaration): List[IR.ModuleDeclaration] =
     decl match {
       case AST.ExternalDeclaration.Declaration(decl) =>
-        ???
+        translateDeclaration(decl).map(IR.ModuleDeclaration.Declaration(_))
       case AST.ExternalDeclaration.FunctionDefinition(fd) =>
-        IR.ModuleDeclaration.FunctionDefinition(translateFunctionDefinition(fd))
+        List(IR.ModuleDeclaration.FunctionDefinition(translateFunctionDefinition(fd)))
     }
 
   def translateFunctionDefinition(fd: AST.FunctionDefinition): IR.FunctionDefinition = {
@@ -32,9 +55,8 @@ object IRTranslation {
 
         val functionParams = params.parameterList.parameters.toList.map {
           case AST.ParameterDeclaration.Declarator(specifiers, declOpt) =>
-            val decl =
-              declOpt.get // TODO: an identifier is expected here, except if the specifier is void?
-            val paramTpe = extractTypeFromDeclaration(specifiers, decl).get
+            val decl = declOpt.get // TODO: an identifier is expected here, except if the specifier is void?
+            val paramTpe = deriveType(specifiers.typeSpecifiers, specifiers.typeQualifiers, decl.pointer).get
             val paramName = extractIdentifierFromDirectDeclarator(decl.directDeclarator)
             IR.FunctionParameter(paramTpe, paramName)
         }
@@ -46,7 +68,7 @@ object IRTranslation {
       case x => throw new IllegalStateException(s"function declarator expected, got $x")
     }
 
-    val returnTpe = fd.specifiers.flatMap(ds => deriveType(ds.typeQualifiersOrSpecifiers)).get
+    val returnTpe = fd.specifiers.flatMap(ds => deriveType(ds.typeSpecifiers, ds.typeQualifiers, fd.declarator.pointer)).get
 
     val block = IR.Block(
       fd.statements.declarationList
@@ -59,19 +81,30 @@ object IRTranslation {
     IR.FunctionDefinition(storageClass, name, returnTpe, Some(functionParams), block)
   }
 
-  def translateDeclaration(decl: AST.Declaration): List[IR.Declaration] =
-    decl.initDeclarators.map(_.toList).getOrElse(Nil).map { initDecl =>
-      val identifier = extractIdentifierFromDirectDeclarator(initDecl.declarator.directDeclarator)
-      val storageClass = extractStorageClass(decl.specifiers).map(translateStorageClass)
-      val tpe = extractTypeFromDeclaration(decl.specifiers, initDecl.declarator)
-        .getOrElse(throw new RuntimeException("no type found"))
-      IR.Declaration(
-        storageClass,
-        identifier,
-        tpe,
-        initDecl.initializer.map(translateInitializer)
-      )
+  // $3.5: A declaration must declares at least a declarator, a tag, or the members of an enumeration.
+  // TODO: this constraint should be validated in the typer
+  def translateDeclaration(decl: AST.Declaration): List[IR.Declaration] = {
+    // First, check to see if we are introducing any tags.
+    // Then we check to see if there are any declarators
+
+    decl.initDeclarators match {
+      case Some(initDecls) => 
+        initDecls.toList.map { initDecl =>
+          val identifier = extractIdentifierFromDirectDeclarator(initDecl.declarator.directDeclarator)
+          val storageClass = extractStorageClass(decl.specifiers).map(translateStorageClass)
+          val tpe = deriveType(decl.specifiers.typeSpecifiers, decl.specifiers.typeQualifiers, initDecl.declarator.pointer)
+            .getOrElse(throw new RuntimeException("no type found"))
+          IR.Declaration(
+            storageClass,
+            identifier,
+            tpe,
+            initDecl.initializer.map(translateInitializer)
+          )
+        }
+      case None =>
+        ???
     }
+  }
 
   def translateInitializer(init: AST.Initializer): IR.Initializer =
     init match {
@@ -171,11 +204,8 @@ object IRTranslation {
     }
 
   // TODO: correct pointer nesting. double pointers won't work, also type qualifiers
-  def translateTypeName(typeName: AST.TypeName): Option[IR.Type] = {
-    deriveType(typeName.typeSpecifiersOrQualifiers.toList).map { t =>
-      typeName.abstractDeclarator.fold(t)(_ => IR.Type.Pointer(t))
-    }
-  }
+  def translateTypeName(typeName: AST.TypeName): Option[IR.Type] =
+    deriveType(typeName.specifiers, typeName.qualifiers, typeName.abstractDeclarator.map(_.pointer))
 
   def translatePointer(ptr: AST.Pointer): IR.Pointer =
     IR.Pointer(
@@ -189,36 +219,14 @@ object IRTranslation {
       case AST.TypeQualifier.Volatile => IR.TypeQualifier.Volatile
     }
 
-  def translateTypeSpecifier(s: AST.TypeSpecifier): IR.TypeSpecifier =
-    s match {
-      case AST.TypeSpecifier.Char     => IR.TypeSpecifier.Char
-      case AST.TypeSpecifier.Double   => IR.TypeSpecifier.Double
-      case AST.TypeSpecifier.Float    => IR.TypeSpecifier.Float
-      case AST.TypeSpecifier.Int      => IR.TypeSpecifier.Int
-      case AST.TypeSpecifier.Long     => IR.TypeSpecifier.Long
-      case AST.TypeSpecifier.Short    => IR.TypeSpecifier.Short
-      case AST.TypeSpecifier.Signed   => IR.TypeSpecifier.Signed
-      case AST.TypeSpecifier.Unsigned => IR.TypeSpecifier.Unsigned
-      case AST.TypeSpecifier.Void     => IR.TypeSpecifier.Void
-      case _                          => ???
-    }
+  def translateFieldDeclaration(decl: AST.StructDeclaration): IR.FieldDeclaration = 
+    ???
 
   private def extractIdentifierFromDirectDeclarator(dd: AST.DirectDeclarator): IR.Identifier =
     dd match {
       case AST.DirectDeclarator.Identifier(i) => translateIdentifier(i)
       case _ => throw new IllegalStateException("identifier expected for parameter")
     }
-
-  // Not for function definitions?
-  // TODO: array types
-  private def extractTypeFromDeclaration(
-      specifiers: AST.DeclarationSpecifiers,
-      declarator: AST.Declarator
-  ): Option[IR.Type] = {
-    val baseTpe = deriveType(specifiers.typeQualifiersOrSpecifiers)
-    // TODO: multiple pointer nestings
-    baseTpe.map(tpe => declarator.pointer.fold(tpe)(_ => IR.Type.Pointer(tpe)))
-  }
 
   private def extractStorageClass(
       specifiers: AST.DeclarationSpecifiers
@@ -227,7 +235,7 @@ object IRTranslation {
       case AST.DeclarationSpecifier.StorageClassSpecifier(sc) => sc
     }.headOption
 
-  private val specifierMapping: Map[Set[AST.TypeSpecifier], IR.Type] = {
+  private val primitiveSpecifierMapping: Map[Set[AST.TypeSpecifier], IR.Type] = {
     import AST.TypeSpecifier._
     Map(
       Set(Void) -> IR.Type.Void,
@@ -258,24 +266,33 @@ object IRTranslation {
     )
   }
 
-  private def deriveType(
-      specifiers: List[AST.TypeSpecifier | AST.TypeQualifier]
-  ): Option[IR.Type] = {
-    val typeSpecifiers = specifiers.collect { case ts: AST.TypeSpecifier =>
-      ts
-    }.toSet
-    val typeQualifiers = specifiers
-      .collect { case tq: AST.TypeQualifier =>
-        tq
-      }
+  private def deriveType(specifiers: List[AST.TypeSpecifier], qualifiers: List[AST.TypeQualifier], pointer: Option[AST.Pointer]): Option[IR.Type] =
+    extractTypeFromSpecifiers(specifiers)
+      .map(t => pointer.fold(t)(p => applyPointerType(t, p)))
+      .map(t => applyTypeQualifiers(t, qualifiers))
+
+  // TODO: will add to context
+  private def extractTypeFromSpecifiers(specifiers: List[AST.TypeSpecifier]): Option[IR.Type] = 
+    specifiers match {
+      case AST.TypeSpecifier.StructOrUnion(AST.StructOrUnion.Struct, body) :: Nil => 
+        body match {
+          case AST.StructBody.Full(ident, decls) =>
+            val id = ident.map(translateIdentifier).getOrElse(nextAnonStruct())
+            val structDecl = IR.StructDeclaration(id, decls.toList.map(translateFieldDeclaration))
+            Some(IR.Type.UserDefined(id))
+          case _ => ???
+        }
+      case ts => primitiveSpecifierMapping.get(ts.toSet)
+    }
+
+  // TODO: nested pointers
+  private def applyPointerType(tpe: IR.Type, declarator: AST.Pointer): IR.Type =
+    IR.Type.Pointer(tpe)
+
+  private def applyTypeQualifiers(tpe: IR.Type, qualifiers: List[AST.TypeQualifier]): IR.Type =
+    qualifiers
       .map(translateTypeQualifier)
       .toNel
-    specifierMapping.get(typeSpecifiers).map { unqualified =>
-      typeQualifiers match {
-        case Some(qs) => IR.Type.Qualified(unqualified, qs)
-        case None     => unqualified
-      }
-    }
-  }
+      .fold(tpe)(qs => IR.Type.Qualified(tpe, qs))
 
 }

@@ -74,21 +74,6 @@ object IR {
     case Register
   }
 
-  enum TypeSpecifier {
-    case Void
-    case Char
-    case Short
-    case Int
-    case Long
-    case Float
-    case Double
-    case Signed
-    case Unsigned
-    case StructOrUnion()
-    case Enum()
-    case TypedefName()
-  }
-
   final case class Pointer(typeQualifiers: List[TypeQualifier], pointer: Option[Pointer])
 
   final case class Identifier(value: String)
@@ -170,6 +155,8 @@ object IR {
 
     case Pointer(base: Type)
     case Function(params: List[Type], returnType: Type)
+
+    case UserDefined(name: Identifier)
 
     case Qualified(base: Type, qualifiers: NonEmptyList[TypeQualifier])
 
