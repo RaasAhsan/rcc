@@ -97,7 +97,7 @@ object Parser {
     (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace))
       .map { case ((su, ident), decls) =>
         TypeSpecifier.StructOrUnion(su, StructBody.Full(ident, decls))
-      } |
+      }.backtrack |
       (structOrUnion ~ identifier).map { case (su, ident) =>
         TypeSpecifier.StructOrUnion(su, StructBody.Incomplete(ident))
       }
@@ -295,6 +295,7 @@ object Parser {
     enum Op {
       case FunctionCall(args: Option[ArgumentExpressionList])
       case ArrayGet(index: Expression)
+      case MemberAccess(name: Identifier)
     }
 
     import Op._
@@ -302,13 +303,15 @@ object Parser {
     def op: P[Op] =
       (leftBracket *> P.defer(expression) <* rightBracket).map(ArrayGet(_)) |
         (leftParentheses *> P.defer0(argumentExpressionList.?) <* rightParentheses)
-          .map(FunctionCall(_))
+          .map(FunctionCall(_)) |
+          (dot *> identifier).map(MemberAccess(_))
 
     (primaryExpression ~ op.rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, op) =>
         op match {
           case FunctionCall(args) => Expression.FunctionCall(acc, args)
           case ArrayGet(index)    => Expression.ArrayGet(acc, index)
+          case MemberAccess(ident) => Expression.MemberAccess(acc, ident)
         }
       }
     }
@@ -417,6 +420,7 @@ object Parser {
   def assignOp: P[Unit] = operator("=")
   def semicolon: P[Unit] = operator(";")
   def comma: P[Unit] = operator(",")
+  def dot: P[Unit] = operator(".")
   def plus: P[Unit] = operator("+")
   def minus: P[Unit] = operator("-")
   def star: P[Unit] = operator("*")

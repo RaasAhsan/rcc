@@ -206,6 +206,8 @@ final class IRTranslation private () {
       case AST.Expression.Dereference(expr) => IR.Expression.Dereference(translateExpression(expr))
       case AST.Expression.Cast(typeName, expr) =>
         IR.Expression.Cast(translateTypeName(typeName).get, translateExpression(expr))
+      case AST.Expression.MemberAccess(lhs, member) =>
+        IR.Expression.MemberAccess(translateExpression(lhs), translateIdentifier(member))
     }
 
   def translateConstant(const: AST.Constant): IR.Constant =
@@ -309,7 +311,8 @@ final class IRTranslation private () {
               IR.StructDeclaration(id, decls.toList.flatMap(translateFieldDeclaration))
             addStruct(structDecl)
             Some(IR.Type.UserDefined(id))
-          case _ => ???
+          case AST.StructBody.Incomplete(ident) => 
+            Some(IR.Type.UserDefined(translateIdentifier(ident)))
         }
       case ts => primitiveSpecifierMapping.get(ts.toSet)
     }

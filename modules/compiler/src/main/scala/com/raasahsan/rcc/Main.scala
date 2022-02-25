@@ -4,11 +4,25 @@ import com.raasahsan.rcc.codegen.llir._
 
 object Main {
 
+
   val program = """
     struct point {
-      int x;
-      int y;
+      int x, y;
     };
+  
+    int main() {
+      struct point p;
+      return 3;
+    }
+  """
+
+  val program3 = """
+    struct point {
+      struct foo {
+        int r, y;
+      } x;
+      int y;
+    } a, *b, c;
   
     int main() {
       int x = 3;

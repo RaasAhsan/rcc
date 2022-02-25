@@ -7,38 +7,73 @@ object Typer {
 
   import IR._
 
-  type TypingContext = Map[Identifier, Type]
+  final case class TypingContext(names: Map[Identifier, Type], userDefinedTypes: Map[Identifier, UserDefinedType]) {
+    def addName(ident: Identifier, tpe: Type): TypingContext =
+      copy(names = names + (ident -> tpe))
+    def getName(ident: Identifier): Option[Type] = names.get(ident)
+    def addUserDefinedType(ident: Identifier, tpe: UserDefinedType): TypingContext =
+      copy(userDefinedTypes = userDefinedTypes + (ident -> tpe))
+    def getUserDefinedType(ident: Identifier): Option[UserDefinedType] = userDefinedTypes.get(ident)
+
+    def validType(tpe: Type): Either[String, Unit] =
+      tpe match {
+        case Type.UserDefined(ident) => 
+          if (userDefinedTypes.contains(ident)) Right(()) else Left(s"$ident type is undefined")
+        case _ => Right(())
+      }
+  }
+
+  object TypingContext {
+    val Init = TypingContext(Map(), Map())
+  }
+
+  enum UserDefinedType {
+    case Struct(decl: IR.StructDeclaration)
+  }
 
   def typeCheck(m: Module): Either[String, TypingContext] =
-    m.moduleDeclarations.toList
-      .foldLeftM(Map[Identifier, Type]()) { case (ctx, ed) =>
-        ed match {
-          case ModuleDeclaration.FunctionDefinition(fd) =>
-            typeCheckFunctionDefinition(fd, ctx).map(tpe => ctx + (fd.name -> tpe))
-          case ModuleDeclaration.Declaration(decl) =>
-            typeCheckDeclaration(decl, ctx).map(tpe => ctx + (decl.name -> tpe))
-          case x => throw new RuntimeException(s"not implemented for $x")
-        }
-      }
-
-  def typeCheckFunctionDefinition(
-      fd: FunctionDefinition,
-      ctx: Map[Identifier, Type]
-  ): Either[String, Type] =
     for {
+      ctx1 <- m.structDeclarations.toList
+        .foldLeftM(TypingContext.Init) { case (ctx, sd) =>
+          typeCheckStructDeclaration(sd, ctx)
+        }
+      ctx2 <- m.moduleDeclarations.toList
+        .foldLeftM(ctx1) { case (ctx, ed) =>
+          ed match {
+            case ModuleDeclaration.FunctionDefinition(fd) =>
+              typeCheckFunctionDefinition(fd, ctx).map(tpe => ctx.addName(fd.name, tpe))
+            case ModuleDeclaration.Declaration(decl) =>
+              typeCheckDeclaration(decl, ctx).map(tpe => ctx.addName(decl.name, tpe))
+            case x => throw new RuntimeException(s"not implemented for $x")
+          }
+        }
+    } yield ctx2
+
+  def typeCheckStructDeclaration(struct: StructDeclaration, ctx: TypingContext): Either[String, TypingContext] = 
+    struct.fields.foldLeftM(Set[Identifier]()) { case (acc, fieldDecl) =>
+      for {
+        _ <- if (acc.contains(fieldDecl.ident)) Left(s"${fieldDecl.ident} already declared") else Right(())
+        _ <- ctx.validType(fieldDecl.tpe)
+      } yield acc + fieldDecl.ident
+    }.map(_ => ctx.addUserDefinedType(struct.ident, UserDefinedType.Struct(struct)))
+
+  def typeCheckFunctionDefinition(fd: FunctionDefinition, ctx: TypingContext): Either[String, Type] =
+    for {
+      _ <- ctx.validType(fd.returnTpe)
+      _ <- fd.parameters.getOrElse(Nil).traverse(p => ctx.validType(p.tpe))
       params <- fd.parameters.fold(Left("no function parameters"))(Right(_))
       paramTpes = params.map { p => p.name -> p.tpe }
-      _ <- typeCheckBlock(fd.block, ctx ++ paramTpes.toMap)
+      _ <- typeCheckBlock(fd.block, paramTpes.foldLeft(ctx){ case (acc, (name, tpe)) => acc.addName(name, tpe) })
     } yield {
       val tpe = Type.Function(paramTpes.map(_._2), fd.returnTpe)
       fd.tpe = Some(tpe)
       tpe
     }
 
-  def typeCheckBlock(block: Block, ctx: Map[Identifier, Type]): Either[String, Unit] =
+  def typeCheckBlock(block: Block, ctx: TypingContext): Either[String, Unit] =
     for {
       ctx2 <- block.declarations.foldLeftM(ctx) { (ctx, decl) =>
-        typeCheckDeclaration(decl, ctx).map(tpe => ctx + (decl.name -> tpe))
+        typeCheckDeclaration(decl, ctx).map(tpe => ctx.addName(decl.name, tpe))
       }
       _ <- block.statements.traverse(stmt => typeCheckStatement(stmt, ctx2))
     } yield ()
@@ -46,6 +81,7 @@ object Typer {
   // TODO: this only works for block-level declarations, not functions?
   def typeCheckDeclaration(decl: Declaration, ctx: TypingContext): Either[String, Type] =
     for {
+      _ <- ctx.validType(decl.tpe)
       _ <- decl.initializer match {
         case Some(Initializer.Expression(expr)) =>
           typeCheckExpression(expr, ctx).flatMap(tpe =>
@@ -139,7 +175,7 @@ object Typer {
       case Expression.Identifier(ident) =>
         // $3.2.2.1: the type of an lvalue expression is the unqualified version of the type of the lvalue
         ctx
-          .get(ident)
+          .getName(ident)
           .fold(Left(s"identifier $ident not found"))(Right(_))
           .map(_.unqualified)
       case Expression.Assignment(l, r) =>

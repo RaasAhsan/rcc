@@ -239,6 +239,7 @@ object AST {
     final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
     final case class Cast(typeName: TypeName, expr: Expression) extends Expression
+    final case class MemberAccess(lhs: Expression, member: AST.Identifier) extends Expression
   }
 
   enum AssignmentOperator {

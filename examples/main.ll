@@ -5,15 +5,24 @@ target triple = "arm64-apple-macosx12.0.0"
 
 %struct.p = type { %struct.z, %struct.z }
 %struct.z = type { i32, i32 }
-%struct.f = type { i32, i32 }
-%struct.point = type { i32, i32 }
+%struct.point = type { i64, float }
 %struct.color = type { %union.anon }
 %union.anon = type { i32 }
 %struct.point2 = type { i32, i32 }
 
 @__const.main.w = private unnamed_addr constant %struct.p { %struct.z { i32 1, i32 2 }, %struct.z { i32 4, i32 5 } }, align 4
-@__const.main.fp = private unnamed_addr constant %struct.f { i32 2, i32 3 }, align 4
-@p = common global %struct.point zeroinitializer, align 4
+@p = common global %struct.point zeroinitializer, align 8
+
+; Function Attrs: noinline nounwind optnone ssp uwtable
+define i32 @pog(i32 %0, i32 %1) #0 {
+  %3 = alloca i32, align 4
+  %4 = alloca i32, align 4
+  %5 = alloca i32, align 4
+  store i32 %0, i32* %4, align 4
+  store i32 %1, i32* %5, align 4
+  %6 = load i32, i32* %3, align 4
+  ret i32 %6
+}
 
 ; Function Attrs: noinline nounwind optnone ssp uwtable
 define i32 @main() #0 {
@@ -22,28 +31,16 @@ define i32 @main() #0 {
   %3 = alloca %struct.p*, align 8
   %4 = alloca %struct.p, align 4
   %5 = alloca %struct.color, align 4
-  %6 = alloca i32*, align 8
-  %7 = alloca i8*, align 8
-  %8 = alloca %struct.f, align 4
-  %9 = alloca i32, align 4
-  %10 = alloca i32*, align 8
-  %11 = alloca i32, align 4
+  %6 = alloca %struct.point*, align 8
   store i32 0, i32* %1, align 4
-  %12 = bitcast %struct.p* %4 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %12, i8* align 4 bitcast (%struct.p* @__const.main.w to i8*), i64 16, i1 false)
-  %13 = load i32*, i32** %6, align 8
-  %14 = bitcast i32* %13 to %struct.f*
-  %15 = bitcast %struct.f* %14 to i8*
-  store i8* %15, i8** %7, align 8
-  %16 = bitcast %struct.f* %8 to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %16, i8* align 4 bitcast (%struct.f* @__const.main.fp to i8*), i64 8, i1 false)
-  store i32 3, i32* %9, align 4
-  store i32* %9, i32** %10, align 8
-  %17 = load i32*, i32** %10, align 8
-  %18 = ptrtoint i32* %17 to i32
-  store i32 %18, i32* %11, align 4
-  %19 = load i32, i32* %11, align 4
-  ret i32 %19
+  %7 = bitcast %struct.p* %4 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 4 %7, i8* align 4 bitcast (%struct.p* @__const.main.w to i8*), i64 16, i1 false)
+  %8 = call i32 @pog(i32 2, i32 3)
+  %9 = load %struct.point*, %struct.point** %6, align 8
+  %10 = getelementptr inbounds %struct.point, %struct.point* %9, i32 0, i32 1
+  %11 = load float, float* %10, align 8
+  %12 = fptosi float %11 to i32
+  ret i32 %12
 }
 
 ; Function Attrs: argmemonly nofree nosync nounwind willreturn

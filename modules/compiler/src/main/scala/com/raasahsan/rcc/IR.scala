@@ -118,6 +118,7 @@ object IR {
     final case class Reference(expr: Expression) extends Expression
     final case class Dereference(op: Expression) extends Expression
     final case class Cast(castTpe: Type, expr: Expression) extends Expression
+    final case class MemberAccess(lhs: Expression, member: IR.Identifier) extends Expression
   }
 
   enum AssignmentOperator {

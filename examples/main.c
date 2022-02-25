@@ -1,12 +1,15 @@
 #include <stdint.h>
 
 struct point {
-    const int x;
-    int y;
+    long x;
+    float y;
 } p;
 
 struct foo {};
 
+int pog(int x, int y) {
+
+}
 
 int main() {
     const struct p {
@@ -24,15 +27,12 @@ int main() {
             uint32_t rgba;
         };
     } c;
+    
+    pog(2, 3);
 
-    int* p;
-    void* vp = (void*) (struct f { int x, y }*) p;
-    struct f fp = { 2, 3};
+    struct point* p;
 
-    int x = 3;
-    int* h = &x;
-    int addr = (int) h;
-    return addr;
+    return p->y;
 }
 
 struct point2 {
