@@ -94,10 +94,10 @@ object Parser {
       structOrUnionSpecifier
 
   def structOrUnionSpecifier: P[TypeSpecifier] =
-    (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace))
-      .map { case ((su, ident), decls) =>
+    (structOrUnion ~ identifier.? ~ P.defer(leftBrace *> structDeclarationList <* rightBrace)).map {
+      case ((su, ident), decls) =>
         TypeSpecifier.StructOrUnion(su, StructBody.Full(ident, decls))
-      }.backtrack |
+    }.backtrack |
       (structOrUnion ~ identifier).map { case (su, ident) =>
         TypeSpecifier.StructOrUnion(su, StructBody.Incomplete(ident))
       }
@@ -304,13 +304,13 @@ object Parser {
       (leftBracket *> P.defer(expression) <* rightBracket).map(ArrayGet(_)) |
         (leftParentheses *> P.defer0(argumentExpressionList.?) <* rightParentheses)
           .map(FunctionCall(_)) |
-          (dot *> identifier).map(MemberAccess(_))
+        (dot *> identifier).map(MemberAccess(_))
 
     (primaryExpression ~ op.rep0).map { (h, t) =>
       t.foldLeft(h) { case (acc, op) =>
         op match {
-          case FunctionCall(args) => Expression.FunctionCall(acc, args)
-          case ArrayGet(index)    => Expression.ArrayGet(acc, index)
+          case FunctionCall(args)  => Expression.FunctionCall(acc, args)
+          case ArrayGet(index)     => Expression.ArrayGet(acc, index)
           case MemberAccess(ident) => Expression.MemberAccess(acc, ident)
         }
       }

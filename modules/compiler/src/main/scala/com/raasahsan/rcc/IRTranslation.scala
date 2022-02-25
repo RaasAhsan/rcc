@@ -311,7 +311,7 @@ final class IRTranslation private () {
               IR.StructDeclaration(id, decls.toList.flatMap(translateFieldDeclaration))
             addStruct(structDecl)
             Some(IR.Type.UserDefined(id))
-          case AST.StructBody.Incomplete(ident) => 
+          case AST.StructBody.Incomplete(ident) =>
             Some(IR.Type.UserDefined(translateIdentifier(ident)))
         }
       case ts => primitiveSpecifierMapping.get(ts.toSet)

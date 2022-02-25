@@ -7,7 +7,10 @@ object Typer {
 
   import IR._
 
-  final case class TypingContext(names: Map[Identifier, Type], userDefinedTypes: Map[Identifier, UserDefinedType]) {
+  final case class TypingContext(
+      names: Map[Identifier, Type],
+      userDefinedTypes: Map[Identifier, UserDefinedType]
+  ) {
     def addName(ident: Identifier, tpe: Type): TypingContext =
       copy(names = names + (ident -> tpe))
     def getName(ident: Identifier): Option[Type] = names.get(ident)
@@ -17,7 +20,7 @@ object Typer {
 
     def validType(tpe: Type): Either[String, Unit] =
       tpe match {
-        case Type.UserDefined(ident) => 
+        case Type.UserDefined(ident) =>
           if (userDefinedTypes.contains(ident)) Right(()) else Left(s"$ident type is undefined")
         case _ => Right(())
       }
@@ -49,21 +52,34 @@ object Typer {
         }
     } yield ctx2
 
-  def typeCheckStructDeclaration(struct: StructDeclaration, ctx: TypingContext): Either[String, TypingContext] = 
-    struct.fields.foldLeftM(Set[Identifier]()) { case (acc, fieldDecl) =>
-      for {
-        _ <- if (acc.contains(fieldDecl.ident)) Left(s"${fieldDecl.ident} already declared") else Right(())
-        _ <- ctx.validType(fieldDecl.tpe)
-      } yield acc + fieldDecl.ident
-    }.map(_ => ctx.addUserDefinedType(struct.ident, UserDefinedType.Struct(struct)))
+  def typeCheckStructDeclaration(
+      struct: StructDeclaration,
+      ctx: TypingContext
+  ): Either[String, TypingContext] =
+    struct.fields
+      .foldLeftM(Set[Identifier]()) { case (acc, fieldDecl) =>
+        for {
+          _ <-
+            if (acc.contains(fieldDecl.ident)) Left(s"${fieldDecl.ident} already declared")
+            else Right(())
+          _ <- ctx.validType(fieldDecl.tpe)
+        } yield acc + fieldDecl.ident
+      }
+      .map(_ => ctx.addUserDefinedType(struct.ident, UserDefinedType.Struct(struct)))
 
-  def typeCheckFunctionDefinition(fd: FunctionDefinition, ctx: TypingContext): Either[String, Type] =
+  def typeCheckFunctionDefinition(
+      fd: FunctionDefinition,
+      ctx: TypingContext
+  ): Either[String, Type] =
     for {
       _ <- ctx.validType(fd.returnTpe)
       _ <- fd.parameters.getOrElse(Nil).traverse(p => ctx.validType(p.tpe))
       params <- fd.parameters.fold(Left("no function parameters"))(Right(_))
       paramTpes = params.map { p => p.name -> p.tpe }
-      _ <- typeCheckBlock(fd.block, paramTpes.foldLeft(ctx){ case (acc, (name, tpe)) => acc.addName(name, tpe) })
+      _ <- typeCheckBlock(
+        fd.block,
+        paramTpes.foldLeft(ctx) { case (acc, (name, tpe)) => acc.addName(name, tpe) }
+      )
     } yield {
       val tpe = Type.Function(paramTpes.map(_._2), fd.returnTpe)
       fd.tpe = Some(tpe)

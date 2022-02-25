@@ -4,7 +4,6 @@ import com.raasahsan.rcc.codegen.llir._
 
 object Main {
 
-
   val program = """
     struct point {
       int x, y;
