@@ -1,6 +1,7 @@
 package com.raasahsan.rcc
 
 import com.raasahsan.rcc.codegen.llir._
+import com.raasahsan.rcc.preprocessor.Preprocessor
 
 object Main {
 
@@ -61,27 +62,39 @@ object Main {
   
   """
 
+  val programIncludes = """
+  
+ #include <stdio.h>
+
+      int main() {
+        return 3;
+      }
+      
+  """
+
   def main(args: Array[String]): Unit = {
     // println(program.substring(278))
-    val parse = Parser.parse(program)
-    pprint.pprintln(parse)
+    val preprocessed = Preprocessor.preprocess(programIncludes)
 
-    val p = parse.toOption.get
+    // val parse = Parser.parse(programIncludes)
+    // pprint.pprintln(parse)
 
-    val ir = IRTranslation.translate(p)
-    pprint.pprintln(ir)
+    // val p = parse.toOption.get
 
-    val typed = Typer.typeCheck(ir)
-    println(typed)
+    // val ir = IRTranslation.translate(p)
+    // pprint.pprintln(ir)
 
-    val module = LLIRTranslation.translate(ir)
+    // val typed = Typer.typeCheck(ir)
+    // println(typed)
 
-    println(module)
-    val render = LLIRRenderer.render(module)
+    // val module = LLIRTranslation.translate(ir)
 
-    val outDir = os.pwd / "examples"
-    os.write.over(outDir / "simple.ll", render)
+    // println(module)
+    // val render = LLIRRenderer.render(module)
 
-    println("Wrote file")
+    // val outDir = os.pwd / "examples"
+    // os.write.over(outDir / "simple.ll", render)
+
+    // println("Wrote file")
   }
 }
