@@ -5,16 +5,16 @@ import cats.syntax.all._
 import cats.parse.{Parser => P, Parser0 => P0}
 
 object Parser {
-  
+
   import IR._
 
   def parse(input: String) =
     preprocessingFile.parseAll(input)
 
-  def preprocessingFile: P0[PreprocessingFile] = 
+  def preprocessingFile: P0[PreprocessingFile] =
     group.?.map(PreprocessingFile(_))
 
-  def group: P[Group] = 
+  def group: P[Group] =
     groupPart.rep.map(Group(_))
 
   def groupPart: P[GroupPart] =
@@ -22,14 +22,14 @@ object Parser {
       (text.?.with1 <* newline).map(GroupPart.Text(_))
 
   def controlLine: P[ControlLine] = {
-    pound.surroundedBy(horizontalWhitespace.?) *> 
+    pound.surroundedBy(horizontalWhitespace.?) *>
       (include *> horizontalWhitespace.? *> headerName).map(ControlLine.Include(_))
       <* (horizontalWhitespace.? ~ newline)
   }
 
   def ifSection: P[IfSection] = ???
 
-  def text: P[String] = 
+  def text: P[String] =
     P.charsWhile(_ != '\n')
 
   def headerName: P[HeaderName] = {
@@ -40,7 +40,7 @@ object Parser {
       P.charsWhile(c => c != '\"' && c != '\n')
 
     (leftAngle *> hCharSequence <* rightAngle).map(HeaderName.H(_)) |
-     (doubleQuote *> qCharSequence <* doubleQuote).map(HeaderName.Q(_))
+      (doubleQuote *> qCharSequence <* doubleQuote).map(HeaderName.Q(_))
   }
 
   // Keywords

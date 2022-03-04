@@ -10,14 +10,14 @@ class TyperSuite extends FunSuite {
 
   test("integers") {
     assertEquals(
-      typeCheckExpression(Expression.Constant(Constant.IntegerConstant(3)), Map()),
+      typeCheckExpression(Expression.Constant(Constant.IntegerConstant(3)), TypingContext.Init),
       Right(Type.Int)
     )
   }
 
   test("string literals") {
     assertEquals(
-      typeCheckExpression(Expression.StringLiteral("hello"), Map()),
+      typeCheckExpression(Expression.StringLiteral("hello"), TypingContext.Init),
       Right(Type.Pointer(Type.Char))
     )
   }
@@ -37,7 +37,7 @@ class TyperSuite extends FunSuite {
       )
     )
     assertEquals(
-      typeCheckExpression(expr, Map()),
+      typeCheckExpression(expr, TypingContext.Init),
       Right(Type.Int)
     )
   }
@@ -49,9 +49,12 @@ class TyperSuite extends FunSuite {
           Expression.Identifier(Identifier("x")),
           Expression.Identifier(Identifier("y"))
         ),
-        Map(
-          Identifier("x") -> Type.Int,
-          Identifier("y") -> Type.Qualified(Type.Int, NonEmptyList.one(TypeQualifier.Const))
+        TypingContext(
+          Map(
+            Identifier("x") -> Type.Int,
+            Identifier("y") -> Type.Qualified(Type.Int, NonEmptyList.one(TypeQualifier.Const))
+          ),
+          Map()
         )
       ),
       Right(Type.Int)

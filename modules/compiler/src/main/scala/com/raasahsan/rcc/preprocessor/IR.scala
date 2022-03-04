@@ -3,18 +3,22 @@ package com.raasahsan.rcc.preprocessor
 import cats.data.NonEmptyList
 
 object IR {
-  
+
   final case class PreprocessingFile(groups: Option[Group])
 
   final case class Group(parts: NonEmptyList[GroupPart])
 
-  enum GroupPart { 
+  enum GroupPart {
     case Text(value: Option[String])
     case If(section: IfSection)
     case Control(line: ControlLine)
   }
 
-  final case class IfSection(ifGroup: IfGroup, elifGroups: Option[NonEmptyList[ElifGroup]], elseGroup: Option[ElseGroup])
+  final case class IfSection(
+      ifGroup: IfGroup,
+      elifGroups: Option[NonEmptyList[ElifGroup]],
+      elseGroup: Option[ElseGroup]
+  )
 
   enum IfGroup {
     case IfExpr(expr: ConstantExpression, group: Option[Group])
